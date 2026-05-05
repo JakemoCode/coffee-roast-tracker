@@ -18,7 +18,7 @@ import {
   MY_ROASTS_QUERY,
   ROASTS_BY_IDS_QUERY,
 } from "../../graphql/operations";
-import { RoastChart } from "./RoastChart";
+import { RoastChart, type TimeSeriesEntry } from "../../components/RoastChart";
 import { RoastMetricsTable } from "./RoastMetricsTable";
 import { FlavorPill } from "../../components/FlavorPill";
 import { FlavorPickerModal } from "../../components/FlavorPickerModal";
@@ -28,7 +28,6 @@ import { ErrorState } from "../../components/ErrorState";
 import { SkeletonLoader } from "../../components/SkeletonLoader";
 import { useToast } from "../../components/Toast";
 import { formatDate } from "../../lib/formatters";
-import type { TimeSeriesEntry } from "./RoastChart";
 import styles from "./RoastDetailPage.module.css";
 
 export function RoastDetailPage() {

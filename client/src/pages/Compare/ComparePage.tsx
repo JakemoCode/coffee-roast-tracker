@@ -4,7 +4,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@apollo/client/react";
 import { Line } from "react-chartjs-2";
 import type { ChartData, ChartOptions } from "chart.js";
-import type { TimeSeriesEntry } from "../roast-detail/RoastChart";
+import type { TimeSeriesEntry } from "../../components/RoastChart";
 import { ROASTS_BY_IDS_QUERY } from "../../graphql/operations";
 import { useTempUnit } from "../../providers/AppProviders";
 import { formatDuration, formatTemp, formatDate } from "../../lib/formatters";
