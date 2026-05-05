@@ -1,16 +1,16 @@
 import { Routes, Route } from "react-router-dom";
 import { useAuthState } from "./lib/useAuthState";
 import { AppLayout } from "./components/AppLayout";
-import { ProtectedRoute } from "./features/auth/ProtectedRoute";
-import { LandingPage } from "./features/landing/LandingPage";
-import { DashboardPage } from "./features/dashboard/DashboardPage";
-import { RoastDetailPage } from "./features/roast-detail/RoastDetailPage";
+import { ProtectedRoute } from "./utils/ProtectedRoute";
+import { LandingPage } from "./pages/Landing";
+import { DashboardPage } from "./pages/Dashboard";
+import { RoastDetailPage } from "./pages/RoastDetail";
 import { BeanLibraryPage } from "./pages/BeanLibrary";
 import { BeanDetailPage } from "./pages/BeanDetail";
-import { ComparePage } from "./features/compare/ComparePage";
-import { SignInPage } from "./features/auth/SignInPage";
-import { SignUpPage } from "./features/auth/SignUpPage";
-import { NotFoundPage } from "./features/NotFoundPage";
+import { ComparePage } from "./pages/Compare";
+import { SignInPage } from "./pages/SignIn";
+import { SignUpPage } from "./pages/SignUp";
+import { NotFoundPage } from "./pages/NotFound";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 function HomePage() {

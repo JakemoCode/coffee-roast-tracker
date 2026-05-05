@@ -2,7 +2,7 @@ import { graphql } from "./graphql";
 import { BEAN_CARD_FIELDS } from "../components/BeanCard";
 import { FLAVOR_DESCRIPTOR_FIELDS } from "../components/FlavorPickerModal";
 import { ROAST_ROW_FIELDS } from "../components/RoastsTable";
-import { ROAST_METRIC_FIELDS } from "../features/roast-detail/RoastMetricsTable";
+import { ROAST_METRIC_FIELDS } from "../pages/RoastDetail/RoastMetricsTable";
 
 // ---------------------------------------------------------------------------
 // Queries
