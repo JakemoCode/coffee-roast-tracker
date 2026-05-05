@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import { useFragment, useQuery } from "@apollo/client/react";
-import { graphql } from "../graphql/graphql";
-import { FlavorPill } from "./FlavorPill";
-import { StarRating } from "./StarRating";
-import styles from "./styles/BeanCard.module.css";
+import { graphql } from "../../graphql/graphql";
+import { FlavorPill } from "../FlavorPill";
+import { StarRating } from "../StarRating";
+import styles from "./BeanCard.module.css";
 
 const BEAN_CARD_FLAVOR_COLORS_QUERY = graphql(`
   query BeanCardFlavorColors {

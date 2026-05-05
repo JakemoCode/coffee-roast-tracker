@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderWithCache } from "../../../test/helpers/cacheHelpers";
+import { renderWithCache } from "../../../../test/helpers/cacheHelpers";
 import { BeanCard, BEAN_CARD_FIELDS } from "../BeanCard";
 
 interface TestBeanData {
