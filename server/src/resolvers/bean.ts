@@ -3,6 +3,19 @@ import type { Context } from "../context.js";
 import { requireAuth } from "../context.js";
 import { requireBean, requireUserBean } from "../lib/guardHelpers.js";
 
+// Short name is how uploaded roast profiles auto-match to a bean —
+// an empty value silently breaks that flow.
+function requireShortName(shortName: string | undefined): string {
+  const trimmed = shortName?.trim();
+  if (!trimmed) {
+    throw new GraphQLError(
+      "Short name is required so uploaded roast profiles can auto-match to this bean",
+      { extensions: { code: "BAD_USER_INPUT" } },
+    );
+  }
+  return trimmed;
+}
+
 export const beanResolvers = {
   Query: {
     myBeans: async (_: unknown, __: unknown, ctx: Context) => {
@@ -81,6 +94,8 @@ export const beanResolvers = {
         );
       }
 
+      const trimmedShortName = requireShortName(shortName);
+
       return ctx.prisma.$transaction(async (tx) => {
         // Check for existing bean with same name (and optionally origin/process)
         const existing = await tx.bean.findFirst({
@@ -99,10 +114,21 @@ export const beanResolvers = {
           include: { bean: true },
         });
 
-        if (existingUserBean) return existingUserBean;
+        if (existingUserBean) {
+          // Backfill shortName for records created before it was required.
+          // Don't overwrite a value the user has already set.
+          if (!existingUserBean.shortName) {
+            return tx.userBean.update({
+              where: { id: existingUserBean.id },
+              data: { shortName: trimmedShortName },
+              include: { bean: true },
+            });
+          }
+          return existingUserBean;
+        }
 
         return tx.userBean.create({
-          data: { userId, beanId: bean.id, notes, shortName },
+          data: { userId, beanId: bean.id, notes, shortName: trimmedShortName },
           include: { bean: true },
         });
       });
@@ -115,10 +141,12 @@ export const beanResolvers = {
     ) => {
       const userId = requireAuth(ctx);
 
+      const trimmedShortName = requireShortName(shortName);
+
       await requireBean(ctx.prisma, beanId);
 
       return ctx.prisma.userBean.create({
-        data: { userId, beanId, notes, shortName },
+        data: { userId, beanId, notes, shortName: trimmedShortName },
         include: { bean: true },
       });
     },

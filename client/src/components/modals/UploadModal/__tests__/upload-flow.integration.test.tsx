@@ -296,12 +296,15 @@ describe("UploadModal integration: multi-step flow", () => {
       expect(screen.getByPlaceholderText("Bean name, e.g. Kenya AA")).toBeInTheDocument();
     });
 
-    // Fill required fields (minimal mode — only name required, but fill more)
+    // Fill required fields (minimal mode — name + shortName required)
     fireEvent.change(screen.getByPlaceholderText("Bean name, e.g. Kenya AA"), {
       target: { value: "E2E Flavor Chain Bean" },
     });
     fireEvent.change(screen.getByPlaceholderText("Origin, e.g. Yirgacheffe, Ethiopia"), {
       target: { value: "Kenya" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "E2EChain" },
     });
     // Process combobox — use placeholder to target the right one
     const processInput = screen.getByPlaceholderText("Select a process");

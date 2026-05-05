@@ -14,9 +14,9 @@ interface AddBeanModalProps {
     name: string;
     origin: string;
     process: string;
+    shortName: string;
     variety?: string;
     supplier?: string;
-    shortName?: string;
     score?: number;
     notes?: string;
     bagNotes?: string;
@@ -24,7 +24,7 @@ interface AddBeanModalProps {
   }) => void;
   flavors?: Array<{ name: string; color: string }>;
   suppliers?: string[];
-  /** When true, only name is required (used for inline creation during upload) */
+  /** When true, only name and shortName are required (used for inline creation during upload) */
   minimal?: boolean;
 }
 
@@ -54,8 +54,11 @@ export function AddBeanModal({
   const [parseAttempted, setParseAttempted] = useState(false);
 
   const canSave = minimal
-    ? name.trim().length > 0
-    : name.trim().length > 0 && origin.trim().length > 0 && process.trim().length > 0;
+    ? name.trim().length > 0 && shortName.trim().length > 0
+    : name.trim().length > 0 &&
+      origin.trim().length > 0 &&
+      process.trim().length > 0 &&
+      shortName.trim().length > 0;
 
   const [parseNotes, { loading: parsingNotes }] = useLazyQuery(PARSE_SUPPLIER_NOTES_QUERY);
 
@@ -88,7 +91,7 @@ export function AddBeanModal({
       origin: origin.trim(),
       process: process.trim(),
       variety: variety.trim() || undefined,
-      shortName: shortName.trim() || undefined,
+      shortName: shortName.trim(),
       supplier: supplier.trim() || undefined,
       score: scoreNum && !isNaN(scoreNum) ? scoreNum : undefined,
       notes: notes.trim() || undefined,
@@ -143,7 +146,7 @@ export function AddBeanModal({
 
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>
-            Origin <span className={styles.required}>*</span>
+            Origin {!minimal && <span className={styles.required}>*</span>}
           </label>
           <input
             type="text"
@@ -156,7 +159,7 @@ export function AddBeanModal({
 
         <div className={styles.formGroup}>
           <label className={styles.formLabel}>
-            Process <span className={styles.required}>*</span>
+            Process {!minimal && <span className={styles.required}>*</span>}
           </label>
           <Combobox
             options={processOptions}
@@ -178,14 +181,23 @@ export function AddBeanModal({
             />
           </div>
           <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Short Name</label>
+            <label className={styles.formLabel}>
+              Short Name <span className={styles.required}>*</span>
+            </label>
             <input
               type="text"
               className={styles.formInput}
               placeholder="e.g. Yirg, Huila"
               value={shortName}
               onChange={(e) => setShortName(e.target.value)}
+              required
+              aria-describedby="short-name-help"
             />
+            <p id="short-name-help" className={styles.helpText}>
+              Used to auto-match uploaded roast profiles to this bean (e.g.
+              {" "}<strong>Yirg</strong> matches profiles named{" "}
+              <em>YirgKonga-2026-03</em>).
+            </p>
           </div>
         </div>
 

@@ -66,10 +66,15 @@ describe("AddBeanModal integration: form flow", () => {
     fireEvent.change(originInput, { target: { value: "Nyeri, Kenya" } });
     expect(saveBtn).toBeDisabled();
 
-    // Fill process → enabled
+    // Fill process → still disabled (shortName missing)
     const processCombobox = screen.getByPlaceholderText("Select a process");
     await user.click(processCombobox);
     await user.click(screen.getByText("Washed"));
+    expect(saveBtn).toBeDisabled();
+
+    // Fill shortName → enabled
+    const shortNameInput = screen.getByPlaceholderText("e.g. Yirg, Huila");
+    fireEvent.change(shortNameInput, { target: { value: "KenAA" } });
     expect(saveBtn).not.toBeDisabled();
 
     // Clear name → disabled again
@@ -96,6 +101,10 @@ describe("AddBeanModal integration: form flow", () => {
     await user.click(processCombobox);
     await user.click(screen.getByText("Natural"));
 
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "KenAA" },
+    });
+
     // Optional fields
     fireEvent.change(screen.getByPlaceholderText("e.g. Bourbon, SL28"), {
       target: { value: "SL28" },
@@ -118,6 +127,7 @@ describe("AddBeanModal integration: form flow", () => {
       origin: "Kiambu, Kenya",
       process: "Natural",
       variety: "SL28",
+      shortName: "KenAA",
       supplier: "Sweet Maria's",
       bagNotes: "Bright and complex with wine-like acidity",
     });
@@ -182,6 +192,10 @@ describe("AddBeanModal integration: form flow", () => {
     await user.click(processCombobox);
     await user.click(screen.getByText("Washed"));
 
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "Mystery" },
+    });
+
     // Type gibberish supplier notes
     const cuppingTextarea = screen.getByPlaceholderText(
       "Supplier's description of this bean",
@@ -228,7 +242,7 @@ describe("AddBeanModal integration: form flow", () => {
 
   // ---- Minimal mode (inline creation during upload) ----
 
-  it("minimal mode: only name required, save enabled with just name", async () => {
+  it("minimal mode: name + shortName required, origin/process not required", async () => {
     const user = userEvent.setup();
     const { props } = renderAddBeanModal({ minimal: true });
 
@@ -237,11 +251,15 @@ describe("AddBeanModal integration: form flow", () => {
     // Initially disabled
     expect(saveBtn).toBeDisabled();
 
-    // Fill only name
+    // Fill only name → still disabled (shortName missing)
     const nameInput = screen.getByPlaceholderText("Bean name, e.g. Kenya AA");
     fireEvent.change(nameInput, { target: { value: "Quick Bean" } });
+    expect(saveBtn).toBeDisabled();
 
-    // Should be enabled — minimal mode only requires name
+    // Fill shortName → enabled (origin/process not required in minimal mode)
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "Quick" },
+    });
     expect(saveBtn).not.toBeDisabled();
 
     await user.click(saveBtn);
@@ -249,6 +267,7 @@ describe("AddBeanModal integration: form flow", () => {
     expect(props.onSave).toHaveBeenCalledOnce();
     const saved = (props.onSave as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(saved.name).toBe("Quick Bean");
+    expect(saved.shortName).toBe("Quick");
   });
 
   // ---- Cancel ----
