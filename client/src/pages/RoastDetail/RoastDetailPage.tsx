@@ -21,11 +21,11 @@ import {
 import { RoastChart, type TimeSeriesEntry } from "../../components/RoastChart";
 import { RoastMetricsTable } from "./RoastMetricsTable";
 import { FlavorPill } from "../../components/FlavorPill";
-import { FlavorPickerModal } from "../../components/FlavorPickerModal";
+import { FlavorPickerModal } from "../../components/modals/FlavorPickerModal";
 import { StarRating } from "../../components/StarRating";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { useToast } from "../../utils/Toast";
 import { formatDate } from "../../lib/formatters";
 import styles from "./RoastDetailPage.module.css";

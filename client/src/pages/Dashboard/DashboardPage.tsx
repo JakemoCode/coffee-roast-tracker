@@ -8,10 +8,10 @@ import {
 } from "../../graphql/operations";
 import { useTempUnit } from "../../providers/AppProviders";
 import { StatChips } from "./StatChips";
-import { RoastsTable } from "../../components/RoastsTable";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { RoastsTable } from "../../components/tables/RoastsTable";
+import { EmptyState } from "../../components/placeholders/EmptyState";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { CoffeeCupIcon } from "./CoffeeCupIcon";
 import styles from "./DashboardPage.module.css";
 

@@ -10,8 +10,8 @@ import { useTempUnit } from "../../providers/AppProviders";
 import { formatDuration, formatTemp, formatDate } from "../../lib/formatters";
 import { celsiusToFahrenheit } from "../../lib/tempConversion";
 import { StarRating } from "../../components/StarRating";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import styles from "./ComparePage.module.css";
 
 const COMPARE_COLORS = ["#5a3e2b", "#c27a8a", "#5a7247", "#c4862a", "#7a4a6e"];

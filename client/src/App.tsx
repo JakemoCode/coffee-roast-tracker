@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { useAuthState } from "./lib/useAuthState";
-import { AppLayout } from "./components/AppLayout";
+import { AppLayout } from "./components/layout/AppLayout";
 import { ProtectedRoute } from "./utils/ProtectedRoute";
 import { LandingPage } from "./pages/Landing";
 import { DashboardPage } from "./pages/Dashboard";

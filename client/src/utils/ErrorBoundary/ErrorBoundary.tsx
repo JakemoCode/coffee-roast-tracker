@@ -1,5 +1,5 @@
 import { Component } from "react";
-import { ErrorState } from "../../components/ErrorState";
+import { ErrorState } from "../../components/placeholders/ErrorState";
 import styles from "./ErrorBoundary.module.css";
 
 interface ErrorBoundaryProps {
