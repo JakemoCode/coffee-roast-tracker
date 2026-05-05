@@ -15,10 +15,10 @@ import {
   MY_BEANS_QUERY,
 } from "../../graphql/operations";
 import { FlavorPill } from "../../components/FlavorPill";
-import { RoastsTable } from "../../components/RoastsTable";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { RoastsTable } from "../../components/tables/RoastsTable";
+import { ConfirmDialog } from "../../components/modals/ConfirmDialog";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { Combobox } from "../../components/Combobox";
 import { useToast } from "../../utils/Toast";
 import { COFFEE_PROCESSES } from "../../lib/coffeeProcesses";

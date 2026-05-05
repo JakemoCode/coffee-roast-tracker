@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@apollo/client/react";
 import { COMMUNITY_STATS_QUERY, PUBLIC_BEANS_QUERY } from "../../graphql/operations";
 import { BeanCard } from "../../components/BeanCard";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { EmptyState } from "../../components/placeholders/EmptyState";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import styles from "./LandingPage.module.css";
 
 const POPULAR_BEANS_LIMIT = 6;

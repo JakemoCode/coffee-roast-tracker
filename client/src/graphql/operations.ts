@@ -1,7 +1,7 @@
 import { graphql } from "./graphql";
 import { BEAN_CARD_FIELDS } from "../components/BeanCard";
-import { FLAVOR_DESCRIPTOR_FIELDS } from "../components/FlavorPickerModal";
-import { ROAST_ROW_FIELDS } from "../components/RoastsTable";
+import { FLAVOR_DESCRIPTOR_FIELDS } from "../components/modals/FlavorPickerModal";
+import { ROAST_ROW_FIELDS } from "../components/tables/RoastsTable";
 import { ROAST_METRIC_FIELDS } from "../pages/RoastDetail/RoastMetricsTable";
 
 // ---------------------------------------------------------------------------

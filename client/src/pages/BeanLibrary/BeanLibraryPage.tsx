@@ -11,10 +11,10 @@ import {
   DISTINCT_SUPPLIERS_QUERY,
 } from "../../graphql/operations";
 import { BeanCard } from "../../components/BeanCard";
-import { AddBeanModal } from "../../components/AddBeanModal";
-import { EmptyState } from "../../components/EmptyState";
-import { ErrorState } from "../../components/ErrorState";
-import { SkeletonLoader } from "../../components/SkeletonLoader";
+import { AddBeanModal } from "../../components/modals/AddBeanModal";
+import { EmptyState } from "../../components/placeholders/EmptyState";
+import { ErrorState } from "../../components/placeholders/ErrorState";
+import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import type { ResultOf } from "../../graphql/graphql";
 import styles from "./BeanLibraryPage.module.css";
 
