@@ -1,18 +1,11 @@
-import styles from "./styles/FlavorPill.module.css";
+import styles from "./FlavorPill.module.css";
+import { hexToRgbString, readableTextColor } from "./colorContrast";
 
 interface FlavorPillProps {
   name: string;
   color: string;
   variant?: "default" | "off-flavor";
   onRemove?: () => void;
-}
-
-function hexToRgb(hex: string): string {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `${r}, ${g}, ${b}`;
 }
 
 export function FlavorPill({
@@ -23,17 +16,15 @@ export function FlavorPill({
 }: FlavorPillProps) {
   const isOffFlavor = variant === "off-flavor";
   const bgOpacity = isOffFlavor ? 0.1 : 0.15;
+  const rgb = hexToRgbString(color);
 
   const pillStyle = {
-    backgroundColor: `rgba(${hexToRgb(color)}, ${bgOpacity})`,
-    color: color,
-    borderColor: isOffFlavor ? `rgba(${hexToRgb(color)}, 0.4)` : "transparent",
+    backgroundColor: `rgba(${rgb}, ${bgOpacity})`,
+    color: readableTextColor(color),
+    borderColor: isOffFlavor ? `rgba(${rgb}, 0.4)` : "transparent",
   };
 
-  const className = [
-    styles.pill,
-    isOffFlavor ? styles.offFlavor : "",
-  ]
+  const className = [styles.pill, isOffFlavor ? styles.offFlavor : ""]
     .filter(Boolean)
     .join(" ");
 
@@ -57,7 +48,7 @@ export function FlavorPill({
           onClick={onRemove}
           aria-label={`Remove ${name}`}
         >
-          {"\u2715"}
+          {"✕"}
         </button>
       )}
     </span>

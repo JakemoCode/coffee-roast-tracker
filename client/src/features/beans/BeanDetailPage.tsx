@@ -404,14 +404,17 @@ export function BeanDetailPage() {
         </div>
         {bean.suggestedFlavors && bean.suggestedFlavors.length > 0 ? (
           <div className={styles.pillRow} data-testid="supplier-notes">
-            {bean.suggestedFlavors.map((f) => (
-              <FlavorPill
-                key={f}
-                name={f}
-                color="#888888"
-                onRemove={isOwner ? () => handleRemoveSuggestedFlavor(f) : undefined}
-              />
-            ))}
+            {bean.suggestedFlavors.map((f) => {
+              const descriptor = flavorList.find((d) => d.name === f);
+              return (
+                <FlavorPill
+                  key={f}
+                  name={f}
+                  color={descriptor?.color ?? "#888888"}
+                  onRemove={isOwner ? () => handleRemoveSuggestedFlavor(f) : undefined}
+                />
+              );
+            })}
           </div>
         ) : (
           <p className={styles.emptyText}>No supplier notes</p>
@@ -445,16 +448,19 @@ export function BeanDetailPage() {
           {parsedFlavors.length > 0 && (
             <div className={styles.parsedSection}>
               <div className={styles.pillRow}>
-                {parsedFlavors.map((f) => (
-                  <FlavorPill
-                    key={f}
-                    name={f}
-                    color="#888888"
-                    onRemove={() =>
-                      setParsedFlavors((prev) => prev.filter((pf) => pf !== f))
-                    }
-                  />
-                ))}
+                {parsedFlavors.map((f) => {
+                  const descriptor = flavorList.find((d) => d.name === f);
+                  return (
+                    <FlavorPill
+                      key={f}
+                      name={f}
+                      color={descriptor?.color ?? "#888888"}
+                      onRemove={() =>
+                        setParsedFlavors((prev) => prev.filter((pf) => pf !== f))
+                      }
+                    />
+                  );
+                })}
               </div>
               <button
                 type="button"

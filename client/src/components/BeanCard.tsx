@@ -1,9 +1,18 @@
 import { Link } from "react-router-dom";
-import { useFragment } from "@apollo/client/react";
+import { useFragment, useQuery } from "@apollo/client/react";
 import { graphql } from "../graphql/graphql";
 import { FlavorPill } from "./FlavorPill";
 import { StarRating } from "./StarRating";
 import styles from "./styles/BeanCard.module.css";
+
+const BEAN_CARD_FLAVOR_COLORS_QUERY = graphql(`
+  query BeanCardFlavorColors {
+    flavorDescriptors {
+      name
+      color
+    }
+  }
+`);
 
 export const BEAN_CARD_FIELDS = graphql(`
   fragment BeanCardFields on Bean @_unmask {
@@ -33,9 +42,16 @@ export function BeanCard({
     from: beanRef,
   });
 
+  const { data: flavorData } = useQuery(BEAN_CARD_FLAVOR_COLORS_QUERY, {
+    fetchPolicy: "cache-first",
+  });
+  const colorByName = new Map<string, string>(
+    (flavorData?.flavorDescriptors ?? []).map((f) => [f.name, f.color]),
+  );
+
   const flavors = (bean.suggestedFlavors ?? []).map((name) => ({
     name,
-    color: "#888",
+    color: colorByName.get(name) ?? "#888888",
   }));
   const visibleFlavors = flavors.slice(0, MAX_VISIBLE_FLAVORS);
   const overflowCount = flavors.length - MAX_VISIBLE_FLAVORS;
