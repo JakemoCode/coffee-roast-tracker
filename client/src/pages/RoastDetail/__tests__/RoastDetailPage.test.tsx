@@ -8,7 +8,7 @@ import {
   PUBLIC_ROAST_QUERY,
 } from "../../../graphql/operations";
 import { RoastDetailPage } from "../RoastDetailPage";
-import { ToastProvider } from "../../../components/Toast";
+import { ToastProvider } from "../../../utils/Toast";
 
 vi.mock("@apollo/client/react", () => ({
   useQuery: vi.fn(),

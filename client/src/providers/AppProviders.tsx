@@ -5,7 +5,7 @@ import { E2eApolloProvider } from "./E2eApolloProvider";
 import { E2eAuthProvider } from "./E2eAuthContext";
 import { ThemeProvider } from "./ThemeContext";
 import { TempProvider } from "./TempContext";
-import { ToastProvider } from "../components/Toast";
+import { ToastProvider } from "../utils/Toast";
 
 export { useTheme } from "./ThemeContext";
 export { useTempUnit } from "./TempContext";

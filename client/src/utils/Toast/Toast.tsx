@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import styles from "./styles/Toast.module.css";
+import styles from "./Toast.module.css";
 
 type ToastVariant = "success" | "error" | "info";
 

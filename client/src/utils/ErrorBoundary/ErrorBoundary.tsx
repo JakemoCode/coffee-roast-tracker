@@ -1,6 +1,6 @@
 import { Component } from "react";
-import { ErrorState } from "./ErrorState";
-import styles from "./styles/ErrorBoundary.module.css";
+import { ErrorState } from "../../components/ErrorState";
+import styles from "./ErrorBoundary.module.css";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;

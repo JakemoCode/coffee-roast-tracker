@@ -34,7 +34,7 @@ vi.mock("../../../providers/TempContext", () => ({
   useTempUnit: () => ({ tempUnit: "CELSIUS", toggleTempUnit: vi.fn() }),
 }));
 
-vi.mock("../../../components/Toast", () => ({
+vi.mock("../../../utils/Toast", () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }));
 

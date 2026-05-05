@@ -20,7 +20,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonLoader } from "../../components/SkeletonLoader";
 import { Combobox } from "../../components/Combobox";
-import { useToast } from "../../components/Toast";
+import { useToast } from "../../utils/Toast";
 import { COFFEE_PROCESSES } from "../../lib/coffeeProcesses";
 import { useTempUnit } from "../../providers/TempContext";
 import type { ResultOf } from "../../graphql/graphql";

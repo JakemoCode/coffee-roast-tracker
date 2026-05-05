@@ -11,7 +11,7 @@ import { ComparePage } from "./pages/Compare";
 import { SignInPage } from "./pages/SignIn";
 import { SignUpPage } from "./pages/SignUp";
 import { NotFoundPage } from "./pages/NotFound";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary } from "./utils/ErrorBoundary";
 
 function HomePage() {
   const { isSignedIn, isLoaded } = useAuthState();
