@@ -1,0 +1,1 @@
+export { BeanDetailPage } from "./BeanDetailPage";
