@@ -103,9 +103,10 @@ test.describe("Upload flow", () => {
     await fileInput.setInputFiles(KLOG_FIXTURE_2);
     await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
 
-    // Create new bean inline
+    // Create new bean inline (minimal mode: name + shortName required)
     await page.locator("button:has-text('Add'), button:has-text('Create'), button:has-text('new bean')").first().click();
     await page.fill("input[placeholder*='name' i]", "E2E Upload New Bean");
+    await page.fill("input[aria-describedby='short-name-help']", "E2EUpload");
 
     await page.click("button:text('Save')");
 
