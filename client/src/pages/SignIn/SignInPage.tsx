@@ -1,5 +1,5 @@
 import { SignIn } from "@clerk/clerk-react";
-import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import styles from "./SignInPage.module.css";
 
 function SignInContent() {

@@ -2,7 +2,7 @@ import { render, type RenderOptions } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client/core";
 import { ApolloProvider } from "@apollo/client/react";
-import { ToastProvider } from "../../src/components/Toast";
+import { ToastProvider } from "../../src/utils/Toast";
 import { TempProvider } from "../../src/providers/TempContext";
 import { ThemeProvider } from "../../src/providers/ThemeContext";
 

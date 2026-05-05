@@ -26,7 +26,7 @@ import { StarRating } from "../../components/StarRating";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ErrorState } from "../../components/ErrorState";
 import { SkeletonLoader } from "../../components/SkeletonLoader";
-import { useToast } from "../../components/Toast";
+import { useToast } from "../../utils/Toast";
 import { formatDate } from "../../lib/formatters";
 import styles from "./RoastDetailPage.module.css";
 
