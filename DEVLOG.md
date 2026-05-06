@@ -348,3 +348,35 @@ Added Playwright E2E test infrastructure and a suite of behavioral user-flow tes
 - **Behavioral assertions over selector-matching:** Initial runs exposed that many test selectors didn't match actual DOM — tests were rewritten to query by role and visible text, which also serves as an a11y check
 - **28 tests, all green:** Covers dashboard load, roast detail navigation, upload flow, bean library, comparison selection, settings, and share link. 30 additional tests were written but left failing as a "dead button audit" — they document UI interactions that exist in the design but aren't yet wired
 - Test DB and dev server are managed by Playwright's `webServer` config; no manual setup required to run the suite
+
+---
+
+## 2026-05-05 — Deploy target switched: Vercel + Neon (replacing Heroku)
+
+### Summary
+Switched the planned deploy target from Heroku-API + Vercel-frontend to **Vercel for both** (frontend + Apollo Server as serverless functions) with **Neon serverless Postgres** for the database. Nothing has been deployed yet — this is a planning decision, not a migration. CLAUDE.md updated to reflect the new target.
+
+### Why
+- **Heroku has no free tier since 2022.** This is a personal/hobby project; paying $5–10/mo for the API alone wasn't justified.
+- **Firebase was evaluated and ruled out.** Cloud Functions require the Blaze (pay-as-you-go) plan with a credit card on file since 2020 — not "fully free." Firebase has no Postgres support, so adopting it would force a Firestore rewrite of the entire relational data model. Bad fit.
+- **Vercel Hobby + Neon free tier is genuinely free** (no credit card to start). Vercel covers Functions + frontend hosting + edge network. Neon's free tier is 0.5 GB Postgres with serverless autosuspend — well above the working-set size for personal roast tracking.
+
+### Tradeoffs
+- **Cold starts on serverless Apollo:** First request after idle takes a few seconds. Acceptable at hobby scale; would matter more for a public-facing product. Mitigations available (Vercel's Fluid Compute keeps warm instances) if it ever becomes annoying.
+- **Connection pooling on serverless Postgres:** Prisma + Neon need a pooled connection string (Neon provides one out of the box) to avoid exhausting connections under burst traffic. Will need `directUrl` for migrations and `url` for runtime, both configured in `schema.prisma`.
+- **Single-region deploy by default:** Vercel/Neon both default to one region. Fine for a small audience; revisit if latency matters.
+
+### Other free-tier options considered
+- **Render free tier:** API spins down after 15 min idle (~30s cold start). Free Postgres expires after 90 days and must be manually recreated. Operationally painful for a project we want to forget about between roasts.
+- **Fly.io / Railway:** Both removed truly-free tiers; require credit card for any usage.
+- **Cloudflare Workers:** Free tier exists but doesn't run Node — would require rewriting away from `@apollo/server` to a Workers-compatible runtime. Disproportionate to the savings.
+
+### What still needs to happen (not done yet)
+- Add `vercel.json` configuring the API as a Vercel Function and routing GraphQL traffic to it
+- Provision Neon DB, get the pooled + direct connection strings, set `DATABASE_URL` and `DIRECT_URL` in Vercel project env
+- Update `prisma/schema.prisma` with `directUrl = env("DIRECT_URL")` for migrations
+- Wire deploy step into the existing `.github/workflows/ci.yml` (or rely on Vercel's GitHub integration for preview + production deploys)
+- Migrate Cloudflare R2 credentials (file storage) into Vercel env — that piece doesn't change
+
+### Anti-rollback note
+If Vercel's serverless Apollo proves too cold-start-y for actual roast-after-pull-shot workflows, the fallback isn't Heroku — it's **Fly.io** (single config file, real long-running server, $5/mo hobby tier). Keep that escape hatch in mind, but don't plan around it preemptively.

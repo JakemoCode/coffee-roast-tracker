@@ -12,7 +12,7 @@ Web app for tracking, analyzing, and sharing home coffee roasts. Users import Ka
 - **Database:** PostgreSQL
 - **Auth:** Clerk (JWT validation in Apollo context)
 - **File storage:** Cloudflare R2 (S3-compatible)
-- **Deploy:** Heroku (API + DB) + Vercel (frontend)
+- **Deploy:** Vercel (frontend + API as serverless functions) + Neon (Postgres)
 
 ## Monorepo Layout
 
