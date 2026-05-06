@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 import { requireBean, requireRoast } from "../lib/guardHelpers.js";
@@ -5,6 +6,12 @@ import { parseKlog } from "../lib/klogParser.js";
 import { extractKproContent } from "../lib/kproExtractor.js";
 import { validateKlogFile } from "../lib/validateKlog.js";
 import { getFileContent, uploadFile } from "../utils/r2.js";
+
+// SHA-256 hex digest. Stable across uploads of the same file under different names —
+// our primary dedup key for roast .klog content.
+function hashKlogContent(content: string): string {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
 
 type JsonInput = Prisma.InputJsonValue | undefined;
 
@@ -379,14 +386,28 @@ export class RoastService {
       });
     }
 
-    // Duplicate check — if the same file was already uploaded, return the existing roast
-    const existing = await this.prisma.roastFile.findFirst({
-      where: { fileName, roast: { userId } },
-      include: { roast: true },
+    // Duplicate check. Primary key is the SHA-256 of the file contents — that
+    // catches re-uploads under a different filename. We also keep a filename
+    // fallback for legacy roasts created before contentHash existed (NULL hash).
+    const contentHash = hashKlogContent(fileContent);
+
+    const existingByHash = await this.prisma.roast.findUnique({
+      where: { userId_contentHash: { userId, contentHash } },
+      include: ROAST_INCLUDE,
     });
-    if (existing) {
+    if (existingByHash) {
+      return {
+        roast: existingByHash,
+        parseWarnings: ["This file was previously uploaded — returning existing roast."],
+      };
+    }
+
+    const existingByName = await this.prisma.roastFile.findFirst({
+      where: { fileName, roast: { userId, contentHash: null } },
+    });
+    if (existingByName) {
       const roast = await this.prisma.roast.findUniqueOrThrow({
-        where: { id: existing.roastId },
+        where: { id: existingByName.roastId },
         include: ROAST_INCLUDE,
       });
       return { roast, parseWarnings: ["This file was previously uploaded — returning existing roast."] };
@@ -430,6 +451,7 @@ export class RoastService {
           userId,
           beanId,
           isPublic,
+          contentHash,
           roastDate: parsed.roastDate,
           ambientTemp: parsed.ambientTemp,
           roastingLevel: parsed.roastingLevel,

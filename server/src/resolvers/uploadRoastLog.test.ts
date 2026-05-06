@@ -379,4 +379,103 @@ describe("uploadRoastLog mutation", () => {
     expect(body.singleResult.errors).toBeDefined();
     expect(body.singleResult.errors![0]!.message).toContain("Bean not found");
   });
+
+  it("dedups by content hash when the same file is re-uploaded under a different name", async () => {
+    const firstResponse = await server.executeOperation(
+      {
+        query: UPLOAD_ROAST_LOG,
+        variables: {
+          beanId: testBeanId,
+          fileName: "original-name.klog",
+          fileContent: klogContent,
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const firstBody = firstResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null };
+    };
+    const firstResult = firstBody.singleResult.data!.uploadRoastLog as {
+      roast: { id: string };
+      parseWarnings: string[];
+    };
+    createdRoastIds.push(firstResult.roast.id);
+
+    // Same bytes, completely different filename — must resolve to the same roast
+    const secondResponse = await server.executeOperation(
+      {
+        query: UPLOAD_ROAST_LOG,
+        variables: {
+          beanId: testBeanId,
+          fileName: "renamed-copy (1).klog",
+          fileContent: klogContent,
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const secondBody = secondResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null };
+    };
+    const secondResult = secondBody.singleResult.data!.uploadRoastLog as {
+      roast: { id: string };
+      parseWarnings: string[];
+    };
+    expect(secondResult.roast.id).toBe(firstResult.roast.id);
+    expect(secondResult.parseWarnings).toContain(
+      "This file was previously uploaded — returning existing roast.",
+    );
+
+    // And only one roast row should exist for this user
+    const roastCount = await prisma.roast.count({
+      where: { userId: testUserId, beanId: testBeanId },
+    });
+    expect(roastCount).toBe(1);
+  });
+
+  it("falls back to filename match for legacy roasts without contentHash", async () => {
+    // Simulate a roast created before contentHash existed: NULL hash plus a
+    // RoastFile row. The upload path should still find it by filename.
+    const legacyRoast = await prisma.roast.create({
+      data: {
+        userId: testUserId,
+        beanId: testBeanId,
+        isPublic: true,
+        contentHash: null,
+        roastFiles: {
+          create: {
+            fileKey: `roasts/${testUserId}/legacy/legacy-roast.klog`,
+            fileName: "legacy-roast.klog",
+            fileType: "KLOG",
+          },
+        },
+      },
+    });
+    createdRoastIds.push(legacyRoast.id);
+
+    const response = await server.executeOperation(
+      {
+        query: UPLOAD_ROAST_LOG,
+        variables: {
+          beanId: testBeanId,
+          fileName: "legacy-roast.klog",
+          fileContent: klogContent,
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null };
+    };
+    const result = body.singleResult.data!.uploadRoastLog as {
+      roast: { id: string };
+      parseWarnings: string[];
+    };
+    expect(result.roast.id).toBe(legacyRoast.id);
+    expect(result.parseWarnings).toContain(
+      "This file was previously uploaded — returning existing roast.",
+    );
+  });
 });

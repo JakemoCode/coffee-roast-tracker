@@ -23,6 +23,10 @@ model User {
 model Bean {
   id       String  @id @default(cuid())
   name     String
+  // Lowercased, whitespace-collapsed name for case/whitespace-insensitive dedup.
+  // Nullable for back-compat with rows created before this column existed; new
+  // rows always populate it via the createBean resolver.
+  normalizedName String? @unique
   origin   String?
   process  String?
   cropYear  Int?
@@ -120,6 +124,11 @@ model Roast {
   // Visibility
   isPublic Boolean @default(true)
 
+  // SHA-256 of the source .klog file contents. Used to dedup re-uploads of the
+  // same file under a different name. Nullable for back-compat with roasts
+  // created before this column existed.
+  contentHash String?
+
   // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -135,6 +144,7 @@ model Roast {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, contentHash])
   @@index([userId, createdAt(sort: Desc)])
   @@index([beanId, userId, roastDate(sort: Desc)])
 }
