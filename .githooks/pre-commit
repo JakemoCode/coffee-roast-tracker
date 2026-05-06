@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Auto-regenerate gql.tada types when GraphQL surface changes.
+#
+# Watches for staged changes to:
+#   - server/src/schema/typeDefs.ts        (GraphQL schema)
+#   - client/src/graphql/operations.ts     (GraphQL operations)
+#
+# When any of those is staged, regenerates the schema dump + the per-operation
+# type cache, and re-stages whatever it produced. Catches the "tsc -b green
+# locally but red in CI because the cache is stale" trap from PR #62.
+#
+# Skip with: git commit --no-verify  (don't make a habit of it)
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+WATCHED_PATHS=(
+  "server/src/schema/typeDefs.ts"
+  "client/src/graphql/operations.ts"
+)
+
+# Anything staged that we care about?
+NEEDS_REGEN=0
+for path in "${WATCHED_PATHS[@]}"; do
+  if git diff --cached --name-only | grep -qx "$path"; then
+    NEEDS_REGEN=1
+    break
+  fi
+done
+
+if [ "$NEEDS_REGEN" -eq 0 ]; then
+  exit 0
+fi
+
+echo "→ GraphQL surface changed — regenerating gql.tada types…"
+
+# generate:schema spins up the server to introspect, so server deps must be
+# installed. If they aren't, fail loudly rather than committing stale types.
+if ! (cd client && npm run generate:schema >/dev/null 2>&1); then
+  echo "✗ generate:schema failed. Fix the error and try again, or commit with --no-verify if you know what you're doing." >&2
+  exit 1
+fi
+
+# Re-stage anything the regen touched
+git add \
+  client/src/graphql/schema.graphql \
+  client/src/graphql/graphql-env.d.ts \
+  client/src/graphql/graphql-cache.d.ts
+
+echo "✓ gql.tada types regenerated and staged."
