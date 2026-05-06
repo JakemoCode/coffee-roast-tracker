@@ -44,6 +44,15 @@ const ADD_BEAN_TO_LIBRARY = `
   }
 `;
 
+const UPDATE_BEAN = `
+  mutation UpdateBean($id: String!, $input: UpdateBeanInput!) {
+    updateBean(id: $id, input: $input) {
+      id
+      name
+    }
+  }
+`;
+
 let server: ApolloServer<Context>;
 let testUserId: string;
 let testUserIdB: string;
@@ -228,7 +237,7 @@ describe("bean resolvers — shortName", () => {
   it("createBean backfills shortName onto pre-existing UserBean with null shortName", async () => {
     // Simulate a record created before shortName became required
     const bean = await prisma.bean.create({
-      data: { name: "Backfill Source Bean" },
+      data: { name: "Backfill Source Bean", normalizedName: "backfill source bean" },
     });
     createdBeanIds.push(bean.id);
     const userBean = await prisma.userBean.create({
@@ -261,7 +270,7 @@ describe("bean resolvers — shortName", () => {
 
   it("createBean preserves existing UserBean shortName instead of overwriting", async () => {
     const bean = await prisma.bean.create({
-      data: { name: "Preserve Existing Bean" },
+      data: { name: "Preserve Existing Bean", normalizedName: "preserve existing bean" },
     });
     createdBeanIds.push(bean.id);
     const userBean = await prisma.userBean.create({
@@ -446,5 +455,164 @@ describe("bean resolvers — shortName", () => {
       where: { id: userBean.id },
     });
     expect(unchanged!.shortName).toBe("XU");
+  });
+
+  it("createBean dedups across case and whitespace variants", async () => {
+    // First create — establishes the canonical Bean row
+    const firstResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Ethiopia Yirgacheffe", shortName: "ETH" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const firstBody = firstResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(firstBody.singleResult.errors).toBeUndefined();
+    const first = firstBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string; name: string };
+    };
+    createdUserBeanIds.push(first.id);
+    createdBeanIds.push(first.bean.id);
+
+    // Second create from a *different* user with a case + whitespace variant
+    // should reuse the existing Bean row, not create a new one.
+    const secondResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "ETHIOPIA  YIRGACHEFFE", shortName: "ETHB" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserIdB } }
+    );
+    const secondBody = secondResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(secondBody.singleResult.errors).toBeUndefined();
+    const second = secondBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string; name: string };
+    };
+    createdUserBeanIds.push(second.id);
+
+    expect(second.bean.id).toBe(first.bean.id);
+    // Confirm only one Bean row exists for either spelling
+    const matches = await prisma.bean.findMany({
+      where: { normalizedName: "ethiopia yirgacheffe" },
+    });
+    expect(matches).toHaveLength(1);
+  });
+
+  it("addBeanToLibrary returns a clean BAD_USER_INPUT error on duplicate", async () => {
+    const bean = await prisma.bean.create({
+      data: { name: "Clean Duplicate Bean", normalizedName: "clean duplicate bean" },
+    });
+    createdBeanIds.push(bean.id);
+
+    const firstResponse = await server.executeOperation(
+      {
+        query: ADD_BEAN_TO_LIBRARY,
+        variables: { beanId: bean.id, shortName: "CDB" },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const firstBody = firstResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(firstBody.singleResult.errors).toBeUndefined();
+    const firstUserBean = firstBody.singleResult.data!.addBeanToLibrary as { id: string };
+    createdUserBeanIds.push(firstUserBean.id);
+
+    const secondResponse = await server.executeOperation(
+      {
+        query: ADD_BEAN_TO_LIBRARY,
+        variables: { beanId: bean.id, shortName: "CDB2" },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const secondBody = secondResponse.body as {
+      kind: "single";
+      singleResult: {
+        data: Record<string, unknown> | null;
+        errors?: { message: string; extensions?: { code?: string } }[];
+      };
+    };
+    expect(secondBody.singleResult.errors).toBeDefined();
+    expect(secondBody.singleResult.errors![0]!.message).toContain("already in your library");
+    expect(secondBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
+  });
+
+  it("updateBean keeps normalizedName in sync when name changes", async () => {
+    // Seed a bean via createBean so normalizedName is populated correctly
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Kenya Original Name", shortName: "KEN" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    // Rename the bean
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: {
+          id: created.bean.id,
+          input: { name: "Kenya Renamed Variant" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeUndefined();
+
+    // normalizedName should track the new name
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.normalizedName).toBe("kenya renamed variant");
+
+    // And dedup against the new normalized name should reuse the row
+    const dedupResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "KENYA  RENAMED   VARIANT", shortName: "KRVB" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserIdB } }
+    );
+    const dedupBody = dedupResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(dedupBody.singleResult.errors).toBeUndefined();
+    const dedup = dedupBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(dedup.id);
+    expect(dedup.bean.id).toBe(created.bean.id);
   });
 });

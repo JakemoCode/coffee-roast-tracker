@@ -1,7 +1,9 @@
 import { GraphQLError } from "graphql";
+import { Prisma } from "@prisma/client";
 import type { Context } from "../context.js";
 import { requireAuth } from "../context.js";
 import { requireBean, requireUserBean } from "../lib/guardHelpers.js";
+import { normalizeName } from "../lib/normalizeName.js";
 
 // Short name is how uploaded roast profiles auto-match to a bean —
 // an empty value silently breaks that flow.
@@ -96,17 +98,19 @@ export const beanResolvers = {
 
       const trimmedShortName = requireShortName(shortName);
 
+      const normalizedName = normalizeName(beanData.name);
+
       return ctx.prisma.$transaction(async (tx) => {
-        // Check for existing bean with same name (and optionally origin/process)
-        const existing = await tx.bean.findFirst({
-          where: {
-            name: beanData.name,
-            ...(beanData.origin ? { origin: beanData.origin } : {}),
-            ...(beanData.process ? { process: beanData.process } : {}),
-          },
+        // Dedup on the normalized name so case/whitespace variants of the same
+        // bean collapse to a single row. The DB has @unique on normalizedName
+        // as a safety net against races past this lookup.
+        const existing = await tx.bean.findUnique({
+          where: { normalizedName },
         });
 
-        const bean = existing ?? await tx.bean.create({ data: beanData });
+        const bean =
+          existing ??
+          (await tx.bean.create({ data: { ...beanData, normalizedName } }));
 
         // Check if user already has this bean in their library
         const existingUserBean = await tx.userBean.findFirst({
@@ -145,10 +149,21 @@ export const beanResolvers = {
 
       await requireBean(ctx.prisma, beanId);
 
-      return ctx.prisma.userBean.create({
-        data: { userId, beanId, notes, shortName: trimmedShortName },
-        include: { bean: true },
-      });
+      try {
+        return await ctx.prisma.userBean.create({
+          data: { userId, beanId, notes, shortName: trimmedShortName },
+          include: { bean: true },
+        });
+      } catch (err) {
+        // P2002 = unique constraint violation on (userId, beanId).
+        // Surface it as a clean BAD_USER_INPUT instead of an unhandled 500.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          throw new GraphQLError("This bean is already in your library", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        throw err;
+      }
     },
 
     updateUserBean: async (
@@ -196,9 +211,11 @@ export const beanResolvers = {
         });
       }
       const { name, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score } = input;
+      // Keep normalizedName in lock-step with name so dedup lookups stay accurate.
+      const normalizedName = name !== undefined ? normalizeName(name) : undefined;
       return ctx.prisma.bean.update({
         where: { id },
-        data: { name, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score },
+        data: { name, normalizedName, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score },
       });
     },
 
