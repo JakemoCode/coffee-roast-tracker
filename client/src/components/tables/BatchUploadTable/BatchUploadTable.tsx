@@ -17,6 +17,9 @@ export interface BatchRow {
   preview: RoastPreviewMinimal | null;
   error: string | null;
   saved: boolean;
+  // True when the server matched this file to an existing roast on save
+  // (or preview pre-detected one). Marks the row as "no new roast created."
+  isDuplicate: boolean;
 }
 
 interface BatchUploadTableProps {
@@ -66,7 +69,17 @@ export function BatchUploadTable({
                 </>
               ) : (
                 <>
-                  <td className={styles.td}>{row.fileName}</td>
+                  <td className={styles.td}>
+                    {row.fileName}
+                    {row.isDuplicate && (
+                      <span
+                        className={styles.duplicateBadge}
+                        data-testid={`batch-duplicate-badge-${i}`}
+                      >
+                        Already in your library
+                      </span>
+                    )}
+                  </td>
                   <td className={styles.td}>
                     {row.preview?.roastDate
                       ? new Date(row.preview.roastDate).toLocaleDateString()

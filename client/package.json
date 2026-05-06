@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "generate:schema": "npx tsx scripts/extract-schema.ts",
+    "generate:schema": "npx tsx scripts/extract-schema.ts && npx gql-tada generate-output && npx gql-tada turbo --output ./src/graphql/graphql-cache.d.ts",
     "validate:schema": "npx tsx scripts/validate-operations.ts"
   },
   "dependencies": {

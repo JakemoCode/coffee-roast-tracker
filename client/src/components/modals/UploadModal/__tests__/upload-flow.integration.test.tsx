@@ -66,7 +66,7 @@ function renderUploadModal(overrides: Record<string, unknown> = {}) {
     isOpen: true,
     onClose: vi.fn(),
     onPreview: vi.fn().mockResolvedValue(mockPreviewData),
-    onSave: vi.fn().mockResolvedValue({ roastId: "new-1" }),
+    onSave: vi.fn().mockResolvedValue({ roastId: "new-1", wasDuplicate: false }),
     beans: mockBeans,
     onCreateBean: vi
       .fn()

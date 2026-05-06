@@ -58,6 +58,7 @@ const UPLOAD_ROAST_LOG = `
         }
       }
       parseWarnings
+      wasDuplicate
     }
   }
 `;
@@ -212,11 +213,12 @@ describe("uploadRoastLog mutation", () => {
     );
 
     const secondBody = secondResponse.body as { kind: "single"; singleResult: { data: Record<string, unknown> | null } };
-    const secondResult = secondBody.singleResult.data!.uploadRoastLog as { roast: { id: string }; parseWarnings: string[] };
+    const secondResult = secondBody.singleResult.data!.uploadRoastLog as { roast: { id: string }; parseWarnings: string[]; wasDuplicate: boolean };
     // Should return the same roast
     expect(secondResult.roast.id).toBe(firstResult.roast.id);
-    // Should include a warning about the duplicate
+    // Should include a warning and the wasDuplicate flag
     expect(secondResult.parseWarnings).toContain("This file was previously uploaded — returning existing roast.");
+    expect(secondResult.wasDuplicate).toBe(true);
   });
 
   it("auto-creates a UserBean link when uploading against a community bean", async () => {
@@ -421,11 +423,13 @@ describe("uploadRoastLog mutation", () => {
     const secondResult = secondBody.singleResult.data!.uploadRoastLog as {
       roast: { id: string };
       parseWarnings: string[];
+      wasDuplicate: boolean;
     };
     expect(secondResult.roast.id).toBe(firstResult.roast.id);
     expect(secondResult.parseWarnings).toContain(
       "This file was previously uploaded — returning existing roast.",
     );
+    expect(secondResult.wasDuplicate).toBe(true);
 
     // And only one roast row should exist for this user
     const roastCount = await prisma.roast.count({
@@ -472,10 +476,12 @@ describe("uploadRoastLog mutation", () => {
     const result = body.singleResult.data!.uploadRoastLog as {
       roast: { id: string };
       parseWarnings: string[];
+      wasDuplicate: boolean;
     };
     expect(result.roast.id).toBe(legacyRoast.id);
     expect(result.parseWarnings).toContain(
       "This file was previously uploaded — returning existing roast.",
     );
+    expect(result.wasDuplicate).toBe(true);
   });
 });

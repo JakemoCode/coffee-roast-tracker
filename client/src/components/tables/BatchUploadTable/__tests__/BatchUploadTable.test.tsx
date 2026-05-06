@@ -19,6 +19,7 @@ function makeRow(overrides: Partial<BatchRow> = {}): BatchRow {
     },
     error: null,
     saved: false,
+    isDuplicate: false,
     ...overrides,
   };
 }
@@ -158,6 +159,25 @@ describe("BatchUploadTable", () => {
     );
 
     expect(screen.getByText("Pending")).toBeInTheDocument();
+  });
+
+  it("renders an 'Already in your library' badge for duplicate rows", () => {
+    const rows = [
+      makeRow({ fileName: "fresh.klog", isDuplicate: false }),
+      makeRow({ fileName: "already-here.klog", isDuplicate: true }),
+    ];
+    render(
+      <BatchUploadTable
+        rows={rows}
+        onSaveAll={vi.fn()}
+        saving={false}
+        saveProgress={null}
+        canSave={true}
+      />,
+    );
+
+    expect(screen.getByTestId("batch-duplicate-badge-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("batch-duplicate-badge-0")).not.toBeInTheDocument();
   });
 
   it("shows bean name in bean column when selected", () => {

@@ -130,7 +130,10 @@ export function AppLayout() {
     if (!data?.uploadRoastLog?.roast?.id) {
       throw new Error("Failed to save roast log");
     }
-    return { roastId: data.uploadRoastLog.roast.id };
+    return {
+      roastId: data.uploadRoastLog.roast.id,
+      wasDuplicate: data.uploadRoastLog.wasDuplicate,
+    };
   }
 
   async function handleSave(
