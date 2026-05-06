@@ -29,6 +29,9 @@ async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   fireEvent.change(screen.getByPlaceholderText("Origin, e.g. Yirgacheffe, Ethiopia"), {
     target: { value: "Colombia" },
   });
+  fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+    target: { value: "TestShort" },
+  });
 
   // Select process via combobox (identified by placeholder)
   const processCombobox = screen.getByPlaceholderText("Select a process");
@@ -86,6 +89,9 @@ describe("AddBeanModal", () => {
     fireEvent.change(screen.getByPlaceholderText("e.g. Bourbon, SL28"), {
       target: { value: "Heirloom" },
     });
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "EthYirg" },
+    });
     // Supplier is a Combobox with allowCustom — type into it directly
     const supplierCombobox = screen.getByPlaceholderText("e.g. Sweet Maria's");
     await user.type(supplierCombobox, "Sweet Marias");
@@ -101,6 +107,7 @@ describe("AddBeanModal", () => {
     expect(savedBean.origin).toBe("Yirgacheffe, Ethiopia");
     expect(savedBean.process).toBe("Natural");
     expect(savedBean.variety).toBe("Heirloom");
+    expect(savedBean.shortName).toBe("EthYirg");
     expect(savedBean.supplier).toBe("Sweet Marias");
     expect(savedBean.bagNotes).toBe("A bright and fruity Ethiopian heirloom");
   });
@@ -268,7 +275,45 @@ describe("AddBeanModal", () => {
     render(<AddBeanModal {...defaultProps} />);
 
     const requiredMarkers = screen.getAllByText("*");
-    expect(requiredMarkers).toHaveLength(3); // Name, Origin, Process
+    expect(requiredMarkers).toHaveLength(4); // Name, Origin, Process, Short Name
+  });
+
+  it("minimal mode hides Origin/Process required indicators", () => {
+    render(<AddBeanModal {...defaultProps} minimal />);
+
+    // Only Name and Short Name carry asterisks in minimal mode
+    const requiredMarkers = screen.getAllByText("*");
+    expect(requiredMarkers).toHaveLength(2);
+  });
+
+  it("requires Short Name to enable Save", async () => {
+    const user = userEvent.setup();
+    render(<AddBeanModal {...defaultProps} />);
+
+    // Fill everything except shortName
+    fireEvent.change(screen.getByPlaceholderText("Bean name, e.g. Kenya AA"), {
+      target: { value: "Test Bean" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Origin, e.g. Yirgacheffe, Ethiopia"), {
+      target: { value: "Colombia" },
+    });
+    const processCombobox = screen.getByPlaceholderText("Select a process");
+    await user.click(processCombobox);
+    await user.click(screen.getByText("Washed"));
+
+    expect(screen.getByText("Save")).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("e.g. Yirg, Huila"), {
+      target: { value: "TBN" },
+    });
+    expect(screen.getByText("Save")).not.toBeDisabled();
+  });
+
+  it("renders helper text explaining Short Name auto-matching", () => {
+    render(<AddBeanModal {...defaultProps} />);
+    expect(
+      screen.getByText(/auto-match uploaded roast profiles/i),
+    ).toBeInTheDocument();
   });
 
   it("does not include optional fields when empty", async () => {

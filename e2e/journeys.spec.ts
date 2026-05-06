@@ -82,13 +82,14 @@ test.describe("Journey: add bean then upload", () => {
     await waitForBeanLibrary(page);
     await page.click("button:has-text('Add Bean')");
     await page.fill("input[placeholder*='name' i]", "Journey Test Bean");
-    await page.fill("input[placeholder*='origin' i], input[placeholder*='Huila']", "Oaxaca, Mexico");
+    await page.fill("input[placeholder*='Yirgacheffe' i]", "Oaxaca, Mexico");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
     const option = page.locator("[role='option']:text-is('Natural')");
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();
     }
+    await page.fill("input[aria-describedby='short-name-help']", "Journey");
     await page.click("button:text('Save')");
     await page.waitForTimeout(2_000);
 

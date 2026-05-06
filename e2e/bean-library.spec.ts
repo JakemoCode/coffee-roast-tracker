@@ -103,7 +103,7 @@ test.describe("Add Bean flow", () => {
 
     // Fill required fields
     await page.fill("input[placeholder*='name' i]", "E2E Test Brazil Santos");
-    await page.fill("input[placeholder*='origin' i], input[placeholder*='Huila']", "Minas Gerais, Brazil");
+    await page.fill("input[placeholder*='Yirgacheffe' i]", "Minas Gerais, Brazil");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
     // Select from dropdown if visible
@@ -111,6 +111,7 @@ test.describe("Add Bean flow", () => {
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();
     }
+    await page.fill("input[aria-describedby='short-name-help']", "BrSantos");
 
     await page.click("button:text('Save')");
 

@@ -187,7 +187,7 @@ describe("bean resolvers — shortName", () => {
     createdUserBeanIds.push(userBean.id);
   });
 
-  it("createBean without shortName defaults to null", async () => {
+  it("createBean rejects missing shortName", async () => {
     const response = await server.executeOperation(
       {
         query: CREATE_BEAN,
@@ -200,24 +200,117 @@ describe("bean resolvers — shortName", () => {
 
     const body = response.body as {
       kind: "single";
-      singleResult: {
-        data: Record<string, unknown> | null;
-        errors?: { message: string }[];
-      };
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
     };
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toContain("Short name is required");
+  });
 
+  it("createBean rejects whitespace-only shortName", async () => {
+    const response = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Test Bean Whitespace", shortName: "   " },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toContain("Short name is required");
+  });
+
+  it("createBean backfills shortName onto pre-existing UserBean with null shortName", async () => {
+    // Simulate a record created before shortName became required
+    const bean = await prisma.bean.create({
+      data: { name: "Backfill Source Bean" },
+    });
+    createdBeanIds.push(bean.id);
+    const userBean = await prisma.userBean.create({
+      data: { userId: testUserId, beanId: bean.id, shortName: null },
+    });
+    createdUserBeanIds.push(userBean.id);
+
+    const response = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Backfill Source Bean", shortName: "Backfilled" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
     expect(body.singleResult.errors).toBeUndefined();
-    const userBean = body.singleResult.data!.createBean as {
+    const result = body.singleResult.data!.createBean as {
       id: string;
       shortName: string | null;
-      bean: { id: string; name: string };
     };
+    expect(result.id).toBe(userBean.id);
+    expect(result.shortName).toBe("Backfilled");
+  });
 
-    expect(userBean.shortName).toBeNull();
-    expect(userBean.bean.name).toBe("Test Bean No ShortName");
-
+  it("createBean preserves existing UserBean shortName instead of overwriting", async () => {
+    const bean = await prisma.bean.create({
+      data: { name: "Preserve Existing Bean" },
+    });
+    createdBeanIds.push(bean.id);
+    const userBean = await prisma.userBean.create({
+      data: { userId: testUserId, beanId: bean.id, shortName: "Original" },
+    });
     createdUserBeanIds.push(userBean.id);
-    createdBeanIds.push(userBean.bean.id);
+
+    const response = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Preserve Existing Bean", shortName: "Updated" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(body.singleResult.errors).toBeUndefined();
+    const result = body.singleResult.data!.createBean as {
+      id: string;
+      shortName: string | null;
+    };
+    expect(result.shortName).toBe("Original");
+  });
+
+  it("addBeanToLibrary rejects missing shortName", async () => {
+    const bean = await prisma.bean.create({
+      data: { name: "Library No ShortName" },
+    });
+    createdBeanIds.push(bean.id);
+
+    const response = await server.executeOperation(
+      {
+        query: ADD_BEAN_TO_LIBRARY,
+        variables: { beanId: bean.id },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toContain("Short name is required");
   });
 
   it("createBean rejects single-word bean names", async () => {
@@ -264,7 +357,7 @@ describe("bean resolvers — shortName", () => {
     const firstResponse = await server.executeOperation(
       {
         query: ADD_BEAN_TO_LIBRARY,
-        variables: { beanId: bean.id },
+        variables: { beanId: bean.id, shortName: "DUP" },
       },
       { contextValue: { prisma, userId: testUserId } }
     );
@@ -284,7 +377,7 @@ describe("bean resolvers — shortName", () => {
     const secondResponse = await server.executeOperation(
       {
         query: ADD_BEAN_TO_LIBRARY,
-        variables: { beanId: bean.id },
+        variables: { beanId: bean.id, shortName: "DUP2" },
       },
       { contextValue: { prisma, userId: testUserId } }
     );
