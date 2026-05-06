@@ -181,6 +181,7 @@ export const PREVIEW_ROAST_LOG = graphql(`
         name
       }
       parseWarnings
+      existingRoastId
     }
   }
 `);
@@ -211,6 +212,7 @@ export const PREVIEW_ROAST_LOGS = graphql(`
           name
         }
         parseWarnings
+        existingRoastId
       }
     }
   }
@@ -303,6 +305,7 @@ export const UPLOAD_ROAST_LOG = graphql(`
     uploadRoastLog(beanId: $beanId, fileName: $fileName, fileContent: $fileContent, notes: $notes) {
       roast { id }
       parseWarnings
+      wasDuplicate
     }
   }
 `);

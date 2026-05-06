@@ -237,6 +237,23 @@ export class RoastService {
       fileNameWithoutExt,
     );
 
+    // Surface duplicates at preview time so the batch UI can flag rows
+    // before the user clicks Save. Mirrors the dedup uploadRoastLog will
+    // perform on commit (content hash → filename fallback for legacy rows).
+    const contentHash = hashKlogContent(fileContent);
+    const existingByHash = await this.prisma.roast.findUnique({
+      where: { userId_contentHash: { userId, contentHash } },
+      select: { id: true },
+    });
+    let existingRoastId = existingByHash?.id ?? null;
+    if (!existingRoastId) {
+      const legacyMatch = await this.prisma.roastFile.findFirst({
+        where: { fileName, roast: { userId, contentHash: null } },
+        select: { roastId: true },
+      });
+      existingRoastId = legacyMatch?.roastId ?? null;
+    }
+
     return {
       roastDate: parsed.roastDate,
       ambientTemp: parsed.ambientTemp,
@@ -252,6 +269,7 @@ export class RoastService {
       suggestedBeans: library,
       communityBeans: community,
       parseWarnings: parsed.parseWarnings,
+      existingRoastId,
     };
   }
 
@@ -399,6 +417,7 @@ export class RoastService {
       return {
         roast: existingByHash,
         parseWarnings: ["This file was previously uploaded — returning existing roast."],
+        wasDuplicate: true,
       };
     }
 
@@ -410,7 +429,11 @@ export class RoastService {
         where: { id: existingByName.roastId },
         include: ROAST_INCLUDE,
       });
-      return { roast, parseWarnings: ["This file was previously uploaded — returning existing roast."] };
+      return {
+        roast,
+        parseWarnings: ["This file was previously uploaded — returning existing roast."],
+        wasDuplicate: true,
+      };
     }
 
     await requireBean(this.prisma, beanId);
@@ -512,7 +535,7 @@ export class RoastService {
       );
     }
 
-    return { roast: result, parseWarnings };
+    return { roast: result, parseWarnings, wasDuplicate: false };
   }
 
   async uploadRoastProfile(

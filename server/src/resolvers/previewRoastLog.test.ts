@@ -4,6 +4,7 @@ import { typeDefs } from "../schema/typeDefs.js";
 import { resolvers } from "./index.js";
 import { prisma } from "../../test/prisma-client.js";
 import type { Context } from "../context.js";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +38,7 @@ const PREVIEW_ROAST_LOG = `
         name
       }
       parseWarnings
+      existingRoastId
     }
   }
 `;
@@ -323,6 +325,79 @@ describe("previewRoastLog query", () => {
     expect(body.singleResult.errors![0]!.message).toContain(
       "Invalid file extension"
     );
+  });
+
+  it("returns existingRoastId when the user has already uploaded this content", async () => {
+    // Upload the file once via createRoast + RoastFile to seed an existing roast
+    const seeded = await prisma.roast.create({
+      data: {
+        userId: testUserId,
+        beanId: testBeanId,
+        isPublic: true,
+        // SHA-256 of klogContent — must match what previewRoastLog computes
+        contentHash: createHash("sha256").update(klogContent, "utf8").digest("hex"),
+      },
+    });
+
+    const response = await server.executeOperation(
+      {
+        query: PREVIEW_ROAST_LOG,
+        variables: { fileName: "EGB 0320a.klog", fileContent: klogContent },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const body = response.body as SingleResult;
+    expect(body.singleResult.errors).toBeUndefined();
+    const preview = body.singleResult.data!.previewRoastLog as { existingRoastId: string | null };
+    expect(preview.existingRoastId).toBe(seeded.id);
+
+    await prisma.roast.delete({ where: { id: seeded.id } });
+  });
+
+  it("returns existingRoastId via filename fallback for legacy NULL-hash roasts", async () => {
+    const legacy = await prisma.roast.create({
+      data: {
+        userId: testUserId,
+        beanId: testBeanId,
+        isPublic: true,
+        contentHash: null,
+        roastFiles: {
+          create: {
+            fileKey: `roasts/${testUserId}/legacy/legacy-preview.klog`,
+            fileName: "legacy-preview.klog",
+            fileType: "KLOG",
+          },
+        },
+      },
+    });
+
+    const response = await server.executeOperation(
+      {
+        query: PREVIEW_ROAST_LOG,
+        variables: { fileName: "legacy-preview.klog", fileContent: klogContent },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const body = response.body as SingleResult;
+    expect(body.singleResult.errors).toBeUndefined();
+    const preview = body.singleResult.data!.previewRoastLog as { existingRoastId: string | null };
+    expect(preview.existingRoastId).toBe(legacy.id);
+
+    await prisma.roast.delete({ where: { id: legacy.id } });
+  });
+
+  it("returns null existingRoastId for files the user has never uploaded", async () => {
+    const response = await server.executeOperation(
+      {
+        query: PREVIEW_ROAST_LOG,
+        variables: { fileName: "EGB 0320a.klog", fileContent: klogContent },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const body = response.body as SingleResult;
+    expect(body.singleResult.errors).toBeUndefined();
+    const preview = body.singleResult.data!.previewRoastLog as { existingRoastId: string | null };
+    expect(preview.existingRoastId).toBeNull();
   });
 
   it("rejects unauthenticated requests", async () => {

@@ -141,6 +141,7 @@ type BeanScrapeResult {
 type UploadRoastResult {
   roast: Roast!
   parseWarnings: [String!]!
+  wasDuplicate: Boolean!
 }
 
 input RoastLogInput {
@@ -169,6 +170,7 @@ type RoastLogPreview {
   suggestedBeans: [UserBean!]!
   communityBeans: [Bean!]!
   parseWarnings: [String!]!
+  existingRoastId: String
 }
 
 type ProfileDownload {

@@ -141,6 +141,10 @@ export const typeDefs = gql`
   type UploadRoastResult {
     roast: Roast!
     parseWarnings: [String!]!
+    # True when the file matched an existing roast (by content hash, or by
+    # filename for legacy roasts). The returned roast is the existing one;
+    # no new row was created.
+    wasDuplicate: Boolean!
   }
 
   input RoastLogInput {
@@ -169,6 +173,10 @@ export const typeDefs = gql`
     suggestedBeans: [UserBean!]!
     communityBeans: [Bean!]!
     parseWarnings: [String!]!
+    # ID of an existing roast in the user's library that matches this file's
+    # content hash. Null when the file is new. Lets the client show
+    # "already in library" before the user commits the upload.
+    existingRoastId: String
   }
 
   type ProfileDownload {
