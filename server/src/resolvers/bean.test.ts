@@ -550,13 +550,12 @@ describe("bean resolvers — shortName", () => {
     expect(secondBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
   });
 
-  it("updateBean keeps normalizedName in sync when name changes", async () => {
-    // Seed a bean via createBean so normalizedName is populated correctly
+  it("updateBean rejects identity fields (name/origin/process/variety) at the schema layer", async () => {
     const createResponse = await server.executeOperation(
       {
         query: CREATE_BEAN,
         variables: {
-          input: { name: "Kenya Original Name", shortName: "KEN" },
+          input: { name: "Kenya Locked Identity", shortName: "KLI" },
         },
       },
       { contextValue: { prisma, userId: testUserId } }
@@ -572,92 +571,34 @@ describe("bean resolvers — shortName", () => {
     createdUserBeanIds.push(created.id);
     createdBeanIds.push(created.bean.id);
 
-    // Rename the bean
-    const updateResponse = await server.executeOperation(
+    // Send a raw mutation that tries to set name — GraphQL validation should reject it
+    // because `name` is no longer a field on UpdateBeanInput.
+    const response = await server.executeOperation(
       {
-        query: UPDATE_BEAN,
-        variables: {
-          id: created.bean.id,
-          input: { name: "Kenya Renamed Variant" },
-        },
+        query: `
+          mutation Bad($id: String!) {
+            updateBean(id: $id, input: { name: "Kenya Renamed" }) {
+              id
+            }
+          }
+        `,
+        variables: { id: created.bean.id },
       },
       { contextValue: { prisma, userId: testUserId } }
     );
-    const updateBody = updateResponse.body as {
+    const body = response.body as {
       kind: "single";
       singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
     };
-    expect(updateBody.singleResult.errors).toBeUndefined();
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toMatch(/name/i);
 
-    // normalizedName should track the new name
+    // The bean's name is unchanged
     const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
-    expect(refetched!.normalizedName).toBe("kenya renamed variant");
-
-    // And dedup against the new normalized name should reuse the row
-    const dedupResponse = await server.executeOperation(
-      {
-        query: CREATE_BEAN,
-        variables: {
-          input: { name: "KENYA  RENAMED   VARIANT", shortName: "KRVB" },
-        },
-      },
-      { contextValue: { prisma, userId: testUserIdB } }
-    );
-    const dedupBody = dedupResponse.body as {
-      kind: "single";
-      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
-    };
-    expect(dedupBody.singleResult.errors).toBeUndefined();
-    const dedup = dedupBody.singleResult.data!.createBean as {
-      id: string;
-      bean: { id: string };
-    };
-    createdUserBeanIds.push(dedup.id);
-    expect(dedup.bean.id).toBe(created.bean.id);
+    expect(refetched!.name).toBe("Kenya Locked Identity");
   });
 
-  it("updateBean rejects single-word name renames", async () => {
-    const createResponse = await server.executeOperation(
-      {
-        query: CREATE_BEAN,
-        variables: {
-          input: { name: "Brazil Cerrado Natural", shortName: "BCN" },
-        },
-      },
-      { contextValue: { prisma, userId: testUserId } }
-    );
-    const createBody = createResponse.body as {
-      kind: "single";
-      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
-    };
-    const created = createBody.singleResult.data!.createBean as {
-      id: string;
-      bean: { id: string };
-    };
-    createdUserBeanIds.push(created.id);
-    createdBeanIds.push(created.bean.id);
-
-    const updateResponse = await server.executeOperation(
-      {
-        query: UPDATE_BEAN,
-        variables: { id: created.bean.id, input: { name: "Brazil" } },
-      },
-      { contextValue: { prisma, userId: testUserId } }
-    );
-    const updateBody = updateResponse.body as {
-      kind: "single";
-      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
-    };
-    expect(updateBody.singleResult.errors).toBeDefined();
-    expect(updateBody.singleResult.errors![0]!.message).toContain("at least 2 words");
-    expect(updateBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
-
-    // The original name should be unchanged
-    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
-    expect(refetched!.name).toBe("Brazil Cerrado Natural");
-  });
-
-  it("updateBean allows partial updates without name", async () => {
+  it("updateBean accepts only mutable fields", async () => {
     const createResponse = await server.executeOperation(
       {
         query: CREATE_BEAN,

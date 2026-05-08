@@ -191,13 +191,9 @@ export const beanResolvers = {
       { id, input }: {
         id: string;
         input: {
-          name?: string;
-          origin?: string | null;
-          process?: string | null;
           cropYear?: number | null;
           sourceUrl?: string | null;
           elevation?: string | null;
-          variety?: string | null;
           bagNotes?: string | null;
           supplier?: string | null;
           score?: number | null;
@@ -214,16 +210,8 @@ export const beanResolvers = {
           extensions: { code: "NOT_FOUND" },
         });
       }
-      const { name, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score } = input;
-      if (name !== undefined) {
-        requireMultiWordName(name);
-      }
-      // Keep normalizedName in lock-step with name so dedup lookups stay accurate.
-      const normalizedName = name !== undefined ? normalizeName(name) : undefined;
-      return ctx.prisma.bean.update({
-        where: { id },
-        data: { name, normalizedName, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score },
-      });
+      // Identity fields are locked after creation — see UpdateBeanInput.
+      return ctx.prisma.bean.update({ where: { id }, data: input });
     },
 
     updateBeanSuggestedFlavors: async (
