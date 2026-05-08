@@ -50,7 +50,6 @@ type Bean {
   elevation: String
   variety: String
   bagNotes: String
-  supplier: String
   score: Float
   suggestedFlavors: [String!]!
   roasts: [Roast!]!
@@ -62,6 +61,7 @@ type UserBean {
   id: ID!
   notes: String
   shortName: String
+  supplier: String
   bean: Bean!
   createdAt: DateTime!
 }
@@ -204,7 +204,6 @@ input UpdateBeanInput {
   sourceUrl: String
   elevation: String
   bagNotes: String
-  supplier: String
   score: Float
 }
 
@@ -267,12 +266,12 @@ type Query {
   roastById(id: String!): Roast
   roastsByBean(beanId: String!): [Roast!]!
   roastsByIds(ids: [String!]!): [Roast!]!
+  distinctSuppliers: [String!]!
   flavorDescriptors(isOffFlavor: Boolean): [FlavorDescriptor!]!
   parseSupplierNotes(text: String!): [FlavorDescriptor!]!
   scrapeBeanUrl(url: String!): BeanScrapeResult!
   parseBeanPage(html: String!): BeanScrapeResult!
   communityStats: CommunityStats!
-  distinctSuppliers: [String!]!
   publicBeans(limit: Int): [Bean!]!
   publicRoasts(beanId: String, limit: Int, offset: Int): [Roast!]!
   bean(id: String!): Bean
@@ -281,8 +280,8 @@ type Query {
 
 type Mutation {
   createBean(input: CreateBeanInput!): UserBean!
-  addBeanToLibrary(beanId: String!, notes: String, shortName: String): UserBean!
-  updateUserBean(id: String!, notes: String, shortName: String): UserBean!
+  addBeanToLibrary(beanId: String!, notes: String, shortName: String, supplier: String): UserBean!
+  updateUserBean(id: String!, notes: String, shortName: String, supplier: String): UserBean!
   removeBeanFromLibrary(beanId: String!): Boolean!
   createRoast(input: CreateRoastInput!): Roast!
   updateRoast(id: String!, input: UpdateRoastInput!): Roast!

@@ -34,7 +34,6 @@ model Bean {
   elevation String?
   variety   String?  // Varietal/cultivar (e.g. Bourbon, Caturra, SL28)
   bagNotes  String?
-  supplier  String?  // Bean supplier/vendor (e.g. "Sweet Maria's")
   score     Float?   // SCA/cupping score (typically 0-100)
   suggestedFlavors String[] // Flavor names from supplier/scraper, editable by user
 
@@ -49,6 +48,10 @@ model UserBean {
   id        String  @id @default(cuid())
   notes     String?
   shortName String?
+  // Where this user bought this bean (e.g. "Sweet Maria's"). Lives on
+  // UserBean rather than Bean because two users may have the same bean
+  // from different sellers, and supplier isn't part of bean identity.
+  supplier  String?
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

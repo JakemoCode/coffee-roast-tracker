@@ -44,7 +44,6 @@ export const typeDefs = gql`
     elevation: String
     variety: String
     bagNotes: String
-    supplier: String
     score: Float
     suggestedFlavors: [String!]!
     roasts: [Roast!]!
@@ -56,6 +55,9 @@ export const typeDefs = gql`
     id: ID!
     notes: String
     shortName: String
+    # Where this user bought this bean (e.g. "Sweet Maria's"). Per-user
+    # because two people may own the same bean from different sellers.
+    supplier: String
     bean: Bean!
     createdAt: DateTime!
   }
@@ -216,7 +218,6 @@ export const typeDefs = gql`
     sourceUrl: String
     elevation: String
     bagNotes: String
-    supplier: String
     score: Float
   }
 
@@ -282,6 +283,9 @@ export const typeDefs = gql`
     roastById(id: String!): Roast
     roastsByBean(beanId: String!): [Roast!]!
     roastsByIds(ids: [String!]!): [Roast!]!
+    # Per-user supplier autocomplete: returns the current user's distinct
+    # UserBean.supplier values. Requires auth.
+    distinctSuppliers: [String!]!
 
     # Flavors (public — reference data)
     flavorDescriptors(isOffFlavor: Boolean): [FlavorDescriptor!]!
@@ -291,7 +295,6 @@ export const typeDefs = gql`
 
     # Public
     communityStats: CommunityStats!
-    distinctSuppliers: [String!]!
     publicBeans(limit: Int): [Bean!]!
     publicRoasts(beanId: String, limit: Int, offset: Int): [Roast!]!
     bean(id: String!): Bean
@@ -302,8 +305,8 @@ export const typeDefs = gql`
 
   type Mutation {
     createBean(input: CreateBeanInput!): UserBean!
-    addBeanToLibrary(beanId: String!, notes: String, shortName: String): UserBean!
-    updateUserBean(id: String!, notes: String, shortName: String): UserBean!
+    addBeanToLibrary(beanId: String!, notes: String, shortName: String, supplier: String): UserBean!
+    updateUserBean(id: String!, notes: String, shortName: String, supplier: String): UserBean!
     removeBeanFromLibrary(beanId: String!): Boolean!
     createRoast(input: CreateRoastInput!): Roast!
     updateRoast(id: String!, input: UpdateRoastInput!): Roast!

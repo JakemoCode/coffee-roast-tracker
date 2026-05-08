@@ -47,13 +47,16 @@ export const beanResolvers = {
     },
 
     distinctSuppliers: async (_: unknown, __: unknown, ctx: Context) => {
-      const beans = await ctx.prisma.bean.findMany({
-        where: { supplier: { not: null, notIn: [""] } },
+      // Suppliers are per-user (UserBean.supplier) — return only the
+      // current user's suppliers so the autocomplete reflects their history.
+      const userId = requireAuth(ctx);
+      const userBeans = await ctx.prisma.userBean.findMany({
+        where: { userId, supplier: { not: null, notIn: [""] } },
         distinct: ["supplier"],
         select: { supplier: true },
         orderBy: { supplier: "asc" },
       });
-      return beans.map((b) => b.supplier!);
+      return userBeans.map((ub) => ub.supplier!);
     },
 
     publicBeans: async (
@@ -96,7 +99,8 @@ export const beanResolvers = {
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
-      const { notes, shortName, ...beanData } = input;
+      // supplier is per-user — route it to the UserBean, not the shared Bean.
+      const { notes, shortName, supplier, ...beanData } = input;
 
       requireMultiWordName(beanData.name);
 
@@ -123,12 +127,17 @@ export const beanResolvers = {
         });
 
         if (existingUserBean) {
-          // Backfill shortName for records created before it was required.
-          // Don't overwrite a value the user has already set.
-          if (!existingUserBean.shortName) {
+          // Re-running createBean acts as an upsert: backfill shortName
+          // when missing, and apply a newly supplied supplier (e.g. user
+          // re-bought the same bean from a different seller). Don't
+          // overwrite a non-empty existing value with a missing one.
+          const updates: { shortName?: string; supplier?: string } = {};
+          if (!existingUserBean.shortName) updates.shortName = trimmedShortName;
+          if (supplier) updates.supplier = supplier;
+          if (Object.keys(updates).length > 0) {
             return tx.userBean.update({
               where: { id: existingUserBean.id },
-              data: { shortName: trimmedShortName },
+              data: updates,
               include: { bean: true },
             });
           }
@@ -136,7 +145,7 @@ export const beanResolvers = {
         }
 
         return tx.userBean.create({
-          data: { userId, beanId: bean.id, notes, shortName: trimmedShortName },
+          data: { userId, beanId: bean.id, notes, shortName: trimmedShortName, supplier },
           include: { bean: true },
         });
       });
@@ -144,7 +153,7 @@ export const beanResolvers = {
 
     addBeanToLibrary: async (
       _: unknown,
-      { beanId, notes, shortName }: { beanId: string; notes?: string; shortName?: string },
+      { beanId, notes, shortName, supplier }: { beanId: string; notes?: string; shortName?: string; supplier?: string },
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
@@ -155,7 +164,7 @@ export const beanResolvers = {
 
       try {
         return await ctx.prisma.userBean.create({
-          data: { userId, beanId, notes, shortName: trimmedShortName },
+          data: { userId, beanId, notes, shortName: trimmedShortName, supplier },
           include: { bean: true },
         });
       } catch (err) {
@@ -172,7 +181,7 @@ export const beanResolvers = {
 
     updateUserBean: async (
       _: unknown,
-      { id, notes, shortName }: { id: string; notes?: string; shortName?: string },
+      { id, notes, shortName, supplier }: { id: string; notes?: string; shortName?: string; supplier?: string },
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
@@ -181,7 +190,7 @@ export const beanResolvers = {
 
       return ctx.prisma.userBean.update({
         where: { id },
-        data: { notes, shortName },
+        data: { notes, shortName, supplier },
         include: { bean: true },
       });
     },
@@ -195,7 +204,6 @@ export const beanResolvers = {
           sourceUrl?: string | null;
           elevation?: string | null;
           bagNotes?: string | null;
-          supplier?: string | null;
           score?: number | null;
         };
       },
