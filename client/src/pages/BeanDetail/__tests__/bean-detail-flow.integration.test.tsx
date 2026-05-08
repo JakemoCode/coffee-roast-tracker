@@ -201,6 +201,11 @@ describe("BeanDetailPage integration", () => {
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.stringMatching(/^\/roasts\//),
+        expect.objectContaining({
+          state: expect.objectContaining({
+            from: expect.stringMatching(/^\/beans\//),
+          }),
+        }),
       ),
     );
   });

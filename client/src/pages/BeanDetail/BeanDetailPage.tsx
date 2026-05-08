@@ -493,7 +493,11 @@ export function BeanDetailPage() {
             sortable
             hideBeanName
             pageSize={ROASTS_PAGE_SIZE}
-            onRowClick={(roastId) => navigate(`/roasts/${roastId}`)}
+            onRowClick={(roastId) =>
+              navigate(`/roasts/${roastId}`, {
+                state: { from: `/beans/${bean.id}` },
+              })
+            }
             tempUnit={tempUnit}
           />
         ) : (

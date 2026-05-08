@@ -99,10 +99,17 @@ const mockBeanRoasts = [
   },
 ];
 
-function renderWithRouter(routeId = "roast-1") {
+function renderWithRouter(
+  routeId = "roast-1",
+  options: { state?: unknown } = {},
+) {
   return render(
     <ToastProvider>
-      <MemoryRouter initialEntries={[`/roasts/${routeId}`]}>
+      <MemoryRouter
+        initialEntries={[
+          { pathname: `/roasts/${routeId}`, state: options.state },
+        ]}
+      >
         <Routes>
           <Route path="/roasts/:id" element={<RoastDetailPage />} />
         </Routes>
@@ -295,5 +302,37 @@ describe("RoastDetailPage", () => {
 
     renderWithRouter();
     expect(screen.getByText("Roast not found")).toBeInTheDocument();
+  });
+
+  it("back-crumb defaults to 'My Roasts' when no referrer state is supplied", () => {
+    setupOwnerMocks();
+    renderWithRouter();
+    expect(
+      screen.getByRole("button", { name: /← My Roasts/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("back-crumb labels the referrer route when state.from is a bean path", () => {
+    setupOwnerMocks();
+    renderWithRouter("roast-1", { state: { from: "/beans/abc-123" } });
+    expect(
+      screen.getByRole("button", { name: /← Bean/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("back-crumb labels the referrer route when state.from is /compare", () => {
+    setupOwnerMocks();
+    renderWithRouter("roast-1", { state: { from: "/compare?ids=a,b" } });
+    expect(
+      screen.getByRole("button", { name: /← Compare/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("back-crumb falls back to default when state.from is malformed", () => {
+    setupOwnerMocks();
+    renderWithRouter("roast-1", { state: { from: 123 } });
+    expect(
+      screen.getByRole("button", { name: /← My Roasts/i }),
+    ).toBeInTheDocument();
   });
 });
