@@ -143,23 +143,23 @@ test.describe("Roast Detail other roasts table", () => {
     await expect(page.locator("text=/other roasts|more roasts|roasts of this bean/i")).toBeVisible({ timeout: 5_000 });
   });
 
-  test("selecting roasts from other-roasts table enables compare button", async ({ authedPage: page }) => {
+  test("checking a sibling roast in the metrics table marks it compared", async ({ authedPage: page }) => {
     await page.goto("/");
     await waitForDashboard(page);
     await page.locator("text='Kenya Nyeri Ichamama AA'").first().click();
     await expect(page).toHaveURL(/\/roasts\//);
     await waitForRoastDetail(page);
 
-    // Find checkboxes in the other-roasts table
-    const otherRoastsSection = page.locator("text=/other roasts|more roasts/i").locator("..").locator("..");
-    const checkboxes = otherRoastsSection.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    if (count >= 2) {
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
-      // Compare button should appear/enable
-      await expect(page.locator("button:has-text('Compare')")).toBeEnabled({ timeout: 3_000 });
-    }
+    // Roast Detail compare is an inline overlay on the chart, not a button.
+    // The current roast's row has no checkbox; siblings do. Toggling a
+    // sibling's checkbox flips data-compared on its row and overlays its
+    // time series on the chart.
+    const sibling = page.locator('[data-testid="metrics-row"][data-current="false"]').first();
+    await expect(sibling).toHaveAttribute("data-compared", "false");
+
+    await sibling.locator('input[type="checkbox"]').check();
+
+    await expect(sibling).toHaveAttribute("data-compared", "true", { timeout: 3_000 });
   });
 });
 
