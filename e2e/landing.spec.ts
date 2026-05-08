@@ -1,4 +1,4 @@
-import { test, expect, waitForLanding, waitForBeanLibrary } from "./helpers.js";
+import { test, expect, waitForLanding, waitForBeanLibrary, waitForBeanRoastsLoaded } from "./helpers.js";
 
 // ════════════════════════════════════════════════════════════════════
 //  LANDING PAGE (logged-out visitor)
@@ -84,15 +84,14 @@ test.describe("Public browsing from landing", () => {
   });
 
   test("logged-out user can view a public roast detail page", async ({ page }) => {
-    // Navigate to a bean that has roasts, then click a roast
+    // Use Kenya AA explicitly — it has multiple public roasts in seed.
     await page.goto("/beans");
     await waitForBeanLibrary(page);
-    const beanCards = page.locator("[data-testid='bean-card']");
-    await beanCards.first().click();
+    await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
     await expect(page).toHaveURL(/\/beans\//);
+    await waitForBeanRoastsLoaded(page);
 
-    // Click a roast from the roast history table
-    const roastRow = page.locator("table tbody tr a, [data-testid='roast-row']").first();
+    const roastRow = page.locator("[data-testid='roast-row']").first();
     await expect(roastRow).toBeVisible({ timeout: 5_000 });
     await roastRow.click();
     await expect(page).toHaveURL(/\/roasts\//);

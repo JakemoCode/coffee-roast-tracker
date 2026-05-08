@@ -1,4 +1,4 @@
-import { test, expect, waitForBeanLibrary, waitForBeanDetail } from "./helpers.js";
+import { test, expect, waitForBeanLibrary, waitForBeanDetail, waitForBeanRoastsLoaded } from "./helpers.js";
 
 // ════════════════════════════════════════════════════════════════════
 //  BEAN DETAIL — PUBLIC VIEW
@@ -114,8 +114,9 @@ test.describe("Bean Detail roast history", () => {
     await waitForBeanLibrary(page);
     await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
     await expect(page).toHaveURL(/\/beans\//);
+    await waitForBeanRoastsLoaded(page);
 
-    const roastRow = page.locator("[data-testid='roast-row'], table tbody tr a").first();
+    const roastRow = page.locator("[data-testid='roast-row']").first();
     await expect(roastRow).toBeVisible({ timeout: 5_000 });
     await roastRow.click();
     await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });

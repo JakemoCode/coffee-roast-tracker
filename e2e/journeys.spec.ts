@@ -1,4 +1,4 @@
-import { test, expect, waitForDashboard, waitForBeanLibrary, waitForRoastDetail, switchE2eUser } from "./helpers.js";
+import { test, expect, waitForDashboard, waitForBeanLibrary, waitForRoastDetail, waitForBeanRoastsLoaded, switchE2eUser } from "./helpers.js";
 import * as path from "path";
 
 const KLOG_FIXTURE = path.resolve(__dirname, "../mocks/sample-roasts/EGB 0320a.klog");
@@ -23,12 +23,13 @@ test.describe("Journey: logged-out browsing", () => {
     await expect(page).toHaveURL("/beans");
     await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
 
-    // Step 3: Click a bean
-    await page.locator("[data-testid='bean-card']").first().click();
+    // Step 3: Click a bean — Kenya AA has multiple public roasts in seed.
+    await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
     await expect(page).toHaveURL(/\/beans\//);
+    await waitForBeanRoastsLoaded(page);
 
     // Step 4: Click a roast from bean's roast history
-    const roastLink = page.locator("[data-testid='roast-row'], table tbody tr a").first();
+    const roastLink = page.locator("[data-testid='roast-row']").first();
     await expect(roastLink).toBeVisible({ timeout: 5_000 });
     await roastLink.click();
     await expect(page).toHaveURL(/\/roasts\//);

@@ -48,6 +48,13 @@ export async function waitForLanding(page: Page) {
 /** Wait for the dashboard page to finish loading data. */
 export async function waitForDashboard(page: Page) {
   await expect(page.locator("h1")).toContainText("My Roasts", { timeout: 10_000 });
+  // Wait for either the roasts table to populate or the empty state to render.
+  // Without this, tests that count rows/checkboxes race the Apollo query.
+  await expect(
+    page.locator(
+      "[data-testid='roast-row'], text=/upload.*first roast|no roasts/i",
+    ).first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 /** Wait for the bean library page to finish loading. */
@@ -58,6 +65,19 @@ export async function waitForBeanLibrary(page: Page) {
 /** Wait for a bean detail page to load. */
 export async function waitForBeanDetail(page: Page) {
   await expect(page.locator("[data-testid='bean-detail'], h1, h2").first()).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Wait for the roast history table on Bean Detail to populate (or the
+ * empty state to render). Use after navigating to a bean before asserting
+ * on or clicking a roast row.
+ */
+export async function waitForBeanRoastsLoaded(page: Page) {
+  await expect(
+    page.locator(
+      "[data-testid='roast-history'] [data-testid='roast-row'], [data-testid='no-roasts']",
+    ).first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 /** Wait for a roast detail page to load. */
