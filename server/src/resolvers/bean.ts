@@ -18,6 +18,19 @@ function requireShortName(shortName: string | undefined): string {
   return trimmed;
 }
 
+// Real-world green coffee bean names always contain at least two
+// of Country/Process/Farm/Region. Reject single-word names so
+// community matching stays reliable.
+function requireMultiWordName(name: string): void {
+  const wordCount = name.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount < 2) {
+    throw new GraphQLError(
+      "Bean name must contain at least 2 words (e.g. country + region/process)",
+      { extensions: { code: "BAD_USER_INPUT" } },
+    );
+  }
+}
+
 export const beanResolvers = {
   Query: {
     myBeans: async (_: unknown, __: unknown, ctx: Context) => {
@@ -85,16 +98,7 @@ export const beanResolvers = {
       const userId = requireAuth(ctx);
       const { notes, shortName, ...beanData } = input;
 
-      // Real-world green coffee bean names always contain at least two
-      // of Country/Process/Farm/Region. Reject single-word names so
-      // community matching stays reliable.
-      const wordCount = beanData.name.trim().split(/\s+/).filter(Boolean).length;
-      if (wordCount < 2) {
-        throw new GraphQLError(
-          "Bean name must contain at least 2 words (e.g. country + region/process)",
-          { extensions: { code: "BAD_USER_INPUT" } },
-        );
-      }
+      requireMultiWordName(beanData.name);
 
       const trimmedShortName = requireShortName(shortName);
 
@@ -211,6 +215,9 @@ export const beanResolvers = {
         });
       }
       const { name, origin, process, cropYear, sourceUrl, elevation, variety, bagNotes, supplier, score } = input;
+      if (name !== undefined) {
+        requireMultiWordName(name);
+      }
       // Keep normalizedName in lock-step with name so dedup lookups stay accurate.
       const normalizedName = name !== undefined ? normalizeName(name) : undefined;
       return ctx.prisma.bean.update({
