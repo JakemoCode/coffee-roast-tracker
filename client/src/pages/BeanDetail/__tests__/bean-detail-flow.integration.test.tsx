@@ -93,7 +93,7 @@ describe("BeanDetailPage integration", () => {
 
   // ---- US-BD-2: Owner: edit metadata (save) ----
 
-  it("US-BD-2: owner clicks Edit, changes origin, saves, edit mode closes", async () => {
+  it("US-BD-2: owner clicks Edit, changes score, saves, edit mode closes", async () => {
     const user = userEvent.setup();
     setupOwner();
     renderBeanDetail();
@@ -102,18 +102,37 @@ describe("BeanDetailPage integration", () => {
 
     await user.click(screen.getByTestId("edit-btn"));
 
-    const originInput = await screen.findByRole("textbox", { name: /^Origin$/i });
-    expect(originInput).toHaveValue("Ethiopia");
+    const scoreInput = await screen.findByRole("textbox", { name: /^Score$/i });
 
-    await user.clear(originInput);
-    await user.type(originInput, "Kenya");
+    await user.clear(scoreInput);
+    await user.type(scoreInput, "88");
 
     await user.click(screen.getByRole("button", { name: /^Save$/i }));
     await waitFor(() =>
       expect(
-        screen.queryByRole("textbox", { name: /^Origin$/i }),
+        screen.queryByRole("textbox", { name: /^Score$/i }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("US-BD-2b: identity fields (origin/process/variety) are NOT editable in edit mode", async () => {
+    const user = userEvent.setup();
+    setupOwner();
+    renderBeanDetail();
+
+    await waitForBeanLoaded();
+    await user.click(screen.getByTestId("edit-btn"));
+
+    // Score input proves we're in edit mode
+    await screen.findByRole("textbox", { name: /^Score$/i });
+
+    // But identity fields stay as static values
+    expect(
+      screen.queryByRole("textbox", { name: /^Origin$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /^Variety$/i }),
+    ).not.toBeInTheDocument();
   });
 
   // ---- US-BD-3: Owner: edit metadata (cancel — dead-end detection) ----
@@ -126,13 +145,13 @@ describe("BeanDetailPage integration", () => {
     await waitForBeanLoaded();
 
     await user.click(screen.getByTestId("edit-btn"));
-    await screen.findByRole("textbox", { name: /^Origin$/i });
+    await screen.findByRole("textbox", { name: /^Score$/i });
 
     await user.click(screen.getByRole("button", { name: /^Cancel$/i }));
 
     await waitFor(() =>
       expect(
-        screen.queryByRole("textbox", { name: /^Origin$/i }),
+        screen.queryByRole("textbox", { name: /^Score$/i }),
       ).not.toBeInTheDocument(),
     );
 

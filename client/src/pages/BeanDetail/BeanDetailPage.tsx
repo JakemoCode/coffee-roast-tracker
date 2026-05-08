@@ -21,7 +21,6 @@ import { ErrorState } from "../../components/placeholders/ErrorState";
 import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { Combobox } from "../../components/Combobox";
 import { useToast } from "../../utils/Toast";
-import { COFFEE_PROCESSES } from "../../lib/coffeeProcesses";
 import { useTempUnit } from "../../providers/TempContext";
 import type { ResultOf } from "../../graphql/graphql";
 import styles from "./BeanDetailPage.module.css";
@@ -29,8 +28,6 @@ import styles from "./BeanDetailPage.module.css";
 type BeanResult = ResultOf<typeof PUBLIC_BEAN_QUERY>["bean"];
 type PrivateRoast = ResultOf<typeof ROASTS_BY_BEAN_QUERY>["roastsByBean"][number];
 type PublicRoast = ResultOf<typeof PUBLIC_ROASTS_QUERY>["publicRoasts"][number];
-
-const processOptions = COFFEE_PROCESSES.map((p) => ({ value: p, label: p }));
 
 const ROASTS_PAGE_SIZE = 10;
 
@@ -82,13 +79,11 @@ export function BeanDetailPage() {
     skip: !beanId || isOwner,
   });
 
-  // Edit state
+  // Edit state — name/origin/process/variety are bean identity and can't be
+  // edited after creation; correcting a bad entry means creating a new bean.
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState({
-    origin: "",
-    process: "",
     elevation: "",
-    variety: "",
     score: "",
     shortName: "",
   });
@@ -132,10 +127,7 @@ export function BeanDetailPage() {
   function handleStartEdit() {
     if (!bean) return;
     setEditFields({
-      origin: bean.origin ?? "",
-      process: bean.process ?? "",
       elevation: bean.elevation ?? "",
-      variety: bean.variety ?? "",
       score: bean.score != null ? String(bean.score) : "",
       shortName: userBean?.shortName ?? "",
     });
@@ -152,10 +144,7 @@ export function BeanDetailPage() {
       variables: {
         id: bean.id,
         input: {
-          origin: editFields.origin.trim() || null,
-          process: editFields.process.trim() || null,
           elevation: editFields.elevation.trim() || null,
-          variety: editFields.variety.trim() || null,
           score: editFields.score ? parseFloat(editFields.score) : null,
         },
       },
@@ -304,16 +293,7 @@ export function BeanDetailPage() {
       <div className={styles.metaGrid} data-testid="bean-metadata">
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Origin</div>
-          {editing ? (
-            <input
-              className={styles.metaInput}
-              value={editFields.origin}
-              onChange={(e) => setEditFields((p) => ({ ...p, origin: e.target.value }))}
-              aria-label="Origin"
-            />
-          ) : (
-            <div className={styles.metaValue}>{bean.origin ?? "\u2014"}</div>
-          )}
+          <div className={styles.metaValue}>{bean.origin ?? "\u2014"}</div>
         </div>
         {isOwner && (
           <div className={styles.metaCard} data-testid="short-name-card">
@@ -336,29 +316,11 @@ export function BeanDetailPage() {
         )}
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Process</div>
-          {editing ? (
-            <Combobox
-              options={processOptions}
-              value={editFields.process}
-              onChange={(v) => setEditFields((p) => ({ ...p, process: v }))}
-              placeholder="e.g. Washed"
-            />
-          ) : (
-            <div className={styles.metaValue}>{bean.process ?? "\u2014"}</div>
-          )}
+          <div className={styles.metaValue}>{bean.process ?? "\u2014"}</div>
         </div>
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Variety</div>
-          {editing ? (
-            <input
-              className={styles.metaInput}
-              value={editFields.variety}
-              onChange={(e) => setEditFields((p) => ({ ...p, variety: e.target.value }))}
-              aria-label="Variety"
-            />
-          ) : (
-            <div className={styles.metaValue}>{bean.variety ?? "\u2014"}</div>
-          )}
+          <div className={styles.metaValue}>{bean.variety ?? "\u2014"}</div>
         </div>
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Score</div>

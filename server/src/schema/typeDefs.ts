@@ -207,14 +207,14 @@ export const typeDefs = gql`
     suggestedFlavors: [String!]
   }
 
+  # Bean identity fields (name, origin, process, variety) are locked after
+  # creation — they're what makes a bean *that bean* and edits would corrupt
+  # the shared catalog. If an entry is wrong, create a new bean and delete
+  # the old one. The remaining fields describe usage and stay community-editable.
   input UpdateBeanInput {
-    name: String
-    origin: String
-    process: String
     cropYear: Int
     sourceUrl: String
     elevation: String
-    variety: String
     bagNotes: String
     supplier: String
     score: Float
