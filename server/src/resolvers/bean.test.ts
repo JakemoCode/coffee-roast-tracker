@@ -615,4 +615,84 @@ describe("bean resolvers — shortName", () => {
     createdUserBeanIds.push(dedup.id);
     expect(dedup.bean.id).toBe(created.bean.id);
   });
+
+  it("updateBean rejects single-word name renames", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Brazil Cerrado Natural", shortName: "BCN" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: created.bean.id, input: { name: "Brazil" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeDefined();
+    expect(updateBody.singleResult.errors![0]!.message).toContain("at least 2 words");
+    expect(updateBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
+
+    // The original name should be unchanged
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.name).toBe("Brazil Cerrado Natural");
+  });
+
+  it("updateBean allows partial updates without name", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: { name: "Guatemala Antigua Washed", shortName: "GAW" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: created.bean.id, input: { score: 90 } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeUndefined();
+
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.name).toBe("Guatemala Antigua Washed");
+    expect(refetched!.score).toBe(90);
+  });
 });
