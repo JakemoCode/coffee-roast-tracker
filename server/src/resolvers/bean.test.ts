@@ -401,22 +401,97 @@ describe("bean resolvers — shortName", () => {
     expect(secondBody.singleResult.errors).toBeDefined();
   });
 
-  it("distinctSuppliers returns unique non-null supplier values", async () => {
+  it("distinctSuppliers returns the current user's distinct supplier values", async () => {
+    // Seed two userBeans for testUserId with different suppliers, plus one
+    // for testUserIdB that shouldn't appear.
+    const beanA = await prisma.bean.create({ data: { name: "Supplier Test A" } });
+    const beanB = await prisma.bean.create({ data: { name: "Supplier Test B" } });
+    const beanC = await prisma.bean.create({ data: { name: "Supplier Test C" } });
+    createdBeanIds.push(beanA.id, beanB.id, beanC.id);
+
+    const ubA = await prisma.userBean.create({
+      data: { userId: testUserId, beanId: beanA.id, shortName: "STA", supplier: "Sweet Maria's" },
+    });
+    const ubB = await prisma.userBean.create({
+      data: { userId: testUserId, beanId: beanB.id, shortName: "STB", supplier: "Bodhi Leaf" },
+    });
+    const ubC = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: beanC.id, shortName: "STC", supplier: "Should Not Appear" },
+    });
+    createdUserBeanIds.push(ubA.id, ubB.id, ubC.id);
+
     const result = await server.executeOperation(
-      {
-        query: `query { distinctSuppliers }`,
-      },
+      { query: `query { distinctSuppliers }` },
+      { contextValue: { prisma, userId: testUserId } },
+    );
+    const body = result.body as {
+      kind: "single";
+      singleResult: { data: { distinctSuppliers: string[] } | null; errors?: { message: string }[] };
+    };
+    expect(body.singleResult.errors).toBeUndefined();
+    const suppliers = body.singleResult.data!.distinctSuppliers;
+    expect(suppliers).toContain("Sweet Maria's");
+    expect(suppliers).toContain("Bodhi Leaf");
+    expect(suppliers).not.toContain("Should Not Appear");
+    // No duplicates, no null
+    expect(new Set(suppliers).size).toBe(suppliers.length);
+    expect(suppliers).not.toContain(null);
+  });
+
+  it("distinctSuppliers requires auth", async () => {
+    const result = await server.executeOperation(
+      { query: `query { distinctSuppliers }` },
       { contextValue: { prisma } },
     );
+    const body = result.body as {
+      kind: "single";
+      singleResult: { data: unknown; errors?: { message: string }[] };
+    };
+    expect(body.singleResult.errors).toBeDefined();
+  });
 
-    expect(result.body.kind).toBe("single");
-    const data = (result.body as any).singleResult.data;
-    expect(Array.isArray(data.distinctSuppliers)).toBe(true);
-    // Should contain no duplicates
-    const set = new Set(data.distinctSuppliers);
-    expect(set.size).toBe(data.distinctSuppliers.length);
-    // Should not contain null
-    expect(data.distinctSuppliers).not.toContain(null);
+  it("createBean applies a new supplier when re-running for an existing UserBean", async () => {
+    // First call seeds without a supplier
+    const firstResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Costa Rica Tarrazu Bella Vista", shortName: "CRT" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const firstBody = firstResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const firstUserBean = firstBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(firstUserBean.id);
+    createdBeanIds.push(firstUserBean.bean.id);
+
+    // Second call provides a supplier — should be applied to the same UserBean
+    const secondResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: {
+          input: {
+            name: "Costa Rica Tarrazu Bella Vista",
+            shortName: "CRT",
+            supplier: "Sweet Maria's",
+          },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const secondBody = secondResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(secondBody.singleResult.errors).toBeUndefined();
+
+    const refetched = await prisma.userBean.findUnique({ where: { id: firstUserBean.id } });
+    expect(refetched!.supplier).toBe("Sweet Maria's");
   });
 
   it("updateUserBean rejects cross-user access", async () => {

@@ -32,6 +32,7 @@ export const MY_BEANS_QUERY = graphql(`
       id
       shortName
       notes
+      supplier
       bean {
         ...BeanCardFields
         elevation
@@ -391,7 +392,8 @@ export const CREATE_BEAN = graphql(`
     createBean(input: $input) {
       id
       shortName
-      bean { id name origin process elevation variety sourceUrl bagNotes supplier score cropYear suggestedFlavors }
+      supplier
+      bean { id name origin process elevation variety sourceUrl bagNotes score cropYear suggestedFlavors }
     }
   }
 `);
@@ -413,10 +415,11 @@ export const UPDATE_BEAN = graphql(`
 `);
 
 export const UPDATE_USER_BEAN = graphql(`
-  mutation UpdateUserBean($id: String!, $notes: String, $shortName: String) {
-    updateUserBean(id: $id, notes: $notes, shortName: $shortName) {
+  mutation UpdateUserBean($id: String!, $notes: String, $shortName: String, $supplier: String) {
+    updateUserBean(id: $id, notes: $notes, shortName: $shortName, supplier: $supplier) {
       id
       notes
+      supplier
       shortName
     }
   }
