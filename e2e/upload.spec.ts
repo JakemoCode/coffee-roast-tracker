@@ -157,12 +157,13 @@ test.describe("Upload parse warnings", () => {
     await fileInput.setInputFiles(KLOG_FIXTURE);
     await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
 
-    // Parse warnings may or may not be present depending on the file
+    // Parse warnings are conditional on the file's content — the test name
+    // ("when present") signals this is a structure check, not a presence
+    // assertion. The fixture may legitimately produce zero warnings.
     const warnings = page.locator("[data-testid='parse-warnings']");
     const warningsCount = await warnings.count();
 
     if (warningsCount > 0) {
-      // If warnings exist, they should be rendered as list items
       const listItems = warnings.locator("li");
       await expect(listItems.first()).toBeVisible({ timeout: 3_000 });
       expect(await listItems.count()).toBeGreaterThan(0);

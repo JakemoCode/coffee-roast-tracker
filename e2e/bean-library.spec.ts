@@ -106,7 +106,8 @@ test.describe("Add Bean flow", () => {
     await page.fill("input[placeholder*='Yirgacheffe' i]", "Minas Gerais, Brazil");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
-    // Select from dropdown if visible
+    // Combobox autocomplete is best-effort — typed value is also accepted
+    // by Save, so a missing dropdown option is not a test failure.
     const option = page.locator("[role='option']:text-is('Natural')");
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();
@@ -130,6 +131,7 @@ test.describe("Add Bean flow", () => {
     await page.fill("input[placeholder*='origin' i], input[placeholder*='Huila']", "Costa Rica");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Honey");
+    // Combobox autocomplete is best-effort; typed value is accepted on Save.
     const option = page.locator("[role='option']:text-is('Honey')");
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();
@@ -140,11 +142,10 @@ test.describe("Add Bean flow", () => {
     const supplierNotes = page.locator("textarea[placeholder*='description' i]");
     await supplierNotes.fill("Bright with blueberry and honey sweetness, hints of dark chocolate");
 
-    // Parse button or auto-parse
+    // Parse button — core to this test
     const parseBtn = page.locator("button:has-text('Parse')");
-    if (await parseBtn.isVisible({ timeout: 2_000 })) {
-      await parseBtn.click();
-    }
+    await expect(parseBtn).toBeVisible({ timeout: 2_000 });
+    await parseBtn.click();
 
     // Should show matched flavor pills
     await expect(page.locator("[data-testid='flavor-pill']").first()).toBeVisible({ timeout: 5_000 });
@@ -200,6 +201,7 @@ test.describe("Add Bean flavor parse no-match", () => {
     await page.fill("input[placeholder*='origin' i], input[placeholder*='Huila']", "Test Origin");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Washed");
+    // Combobox autocomplete is best-effort; typed value is accepted on Save.
     const option = page.locator("[role='option']:text-is('Washed')");
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();

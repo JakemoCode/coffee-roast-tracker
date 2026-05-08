@@ -81,15 +81,13 @@ test.describe("Bean Detail owner editing", () => {
 
     // Find cupping notes textarea
     const cuppingNotes = page.locator("textarea[placeholder*='cupping' i], textarea[placeholder*='notes' i]");
-    if (await cuppingNotes.isVisible({ timeout: 5_000 })) {
-      await cuppingNotes.fill("Rich body, notes of cherry, dark chocolate, and almond");
-      const parseBtn = page.locator("button:has-text('Parse')");
-      if (await parseBtn.isVisible({ timeout: 2_000 })) {
-        await parseBtn.click();
-        // Should show matched flavor pills for confirmation
-        await expect(page.locator("[data-testid='flavor-pill']").first()).toBeVisible({ timeout: 5_000 });
-      }
-    }
+    await expect(cuppingNotes).toBeVisible({ timeout: 5_000 });
+    await cuppingNotes.fill("Rich body, notes of cherry, dark chocolate, and almond");
+    const parseBtn = page.locator("button:has-text('Parse')");
+    await expect(parseBtn).toBeVisible({ timeout: 2_000 });
+    await parseBtn.click();
+    // Should show matched flavor pills for confirmation
+    await expect(page.locator("[data-testid='flavor-pill']").first()).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -118,9 +116,8 @@ test.describe("Bean Detail roast history", () => {
     await expect(page).toHaveURL(/\/beans\//);
 
     const roastRow = page.locator("[data-testid='roast-row'], table tbody tr a").first();
-    if (await roastRow.isVisible({ timeout: 5_000 })) {
-      await roastRow.click();
-      await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
-    }
+    await expect(roastRow).toBeVisible({ timeout: 5_000 });
+    await roastRow.click();
+    await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
   });
 });

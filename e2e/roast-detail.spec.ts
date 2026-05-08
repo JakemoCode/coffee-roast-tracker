@@ -60,14 +60,13 @@ test.describe("Roast Detail owner editing", () => {
 
     // Find notes section and edit
     const editBtn = page.locator("button:text('Edit')").first();
-    if (await editBtn.isVisible({ timeout: 5_000 })) {
-      await editBtn.click();
-      const textarea = page.locator("textarea").first();
-      await expect(textarea).toBeVisible();
-      await textarea.fill("E2E test note — updated");
-      await page.locator("button:text('Save')").first().click();
-      await expect(page.locator("text='E2E test note — updated'")).toBeVisible({ timeout: 5_000 });
-    }
+    await expect(editBtn).toBeVisible({ timeout: 5_000 });
+    await editBtn.click();
+    const textarea = page.locator("textarea").first();
+    await expect(textarea).toBeVisible();
+    await textarea.fill("E2E test note — updated");
+    await page.locator("button:text('Save')").first().click();
+    await expect(page.locator("text='E2E test note — updated'")).toBeVisible({ timeout: 5_000 });
   });
 
   test("inline star rating is editable by owner", async ({ authedPage: page }) => {

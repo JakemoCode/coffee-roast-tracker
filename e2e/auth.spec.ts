@@ -28,10 +28,9 @@ test.describe("Public routes (no auth required)", () => {
     await page.locator("[data-testid='bean-card']").first().click();
     await expect(page).toHaveURL(/\/beans\//);
     const roastLink = page.locator("[data-testid='roast-row'], table tbody tr a").first();
-    if (await roastLink.isVisible({ timeout: 5_000 })) {
-      await roastLink.click();
-      await expect(page).toHaveURL(/\/roasts\//);
-    }
+    await expect(roastLink).toBeVisible({ timeout: 5_000 });
+    await roastLink.click();
+    await expect(page).toHaveURL(/\/roasts\//);
   });
 
   test("private roast shows 'this roast is private' message", async ({ page }) => {

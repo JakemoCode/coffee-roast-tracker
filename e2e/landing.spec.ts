@@ -93,12 +93,11 @@ test.describe("Public browsing from landing", () => {
 
     // Click a roast from the roast history table
     const roastRow = page.locator("table tbody tr a, [data-testid='roast-row']").first();
-    if (await roastRow.isVisible({ timeout: 5_000 })) {
-      await roastRow.click();
-      await expect(page).toHaveURL(/\/roasts\//);
-      // Should see chart and metrics but NOT edit controls
-      await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
-      await expect(page.locator("button:text('Delete')")).not.toBeVisible();
-    }
+    await expect(roastRow).toBeVisible({ timeout: 5_000 });
+    await roastRow.click();
+    await expect(page).toHaveURL(/\/roasts\//);
+    // Should see chart and metrics but NOT edit controls
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("button:text('Delete')")).not.toBeVisible();
   });
 });
