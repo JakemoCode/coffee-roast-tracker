@@ -23,4 +23,17 @@ export default defineConfig({
       "/graphql": "http://localhost:4000",
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split heavy vendor chunks so the browser can cache them
+        // independently and parallelize their download.
+        manualChunks: {
+          apollo: ["@apollo/client", "rxjs"],
+          clerk: ["@clerk/clerk-react"],
+          chart: ["chart.js", "chartjs-plugin-annotation", "chartjs-plugin-zoom", "react-chartjs-2"],
+        },
+      },
+    },
+  },
 });
