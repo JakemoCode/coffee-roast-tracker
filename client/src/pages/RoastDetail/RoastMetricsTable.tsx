@@ -76,6 +76,9 @@ export function RoastMetricsTable({
             return (
               <tr
                 key={r.id}
+                data-testid="metrics-row"
+                data-compared={isCompared ? "true" : "false"}
+                data-current={isCurrent ? "true" : "false"}
                 className={`${styles.row} ${isCurrent ? styles.currentRow : styles.clickableRow} ${isCompared ? styles.comparedRow : ""}`}
                 onClick={() => !isCurrent && onRowClick(r.id)}
               >
