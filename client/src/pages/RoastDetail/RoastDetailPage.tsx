@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useQuery, useMutation, useLazyQuery } from "@apollo/client/react";
 import { useAuthState } from "../../lib/useAuthState";
 import { useTempUnit } from "../../providers/AppProviders";
@@ -28,11 +28,15 @@ import { ErrorState } from "../../components/placeholders/ErrorState";
 import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { useToast } from "../../utils/Toast";
 import { formatDate } from "../../lib/formatters";
+import { readFromPath, labelForPath } from "../../lib/backCrumb";
 import styles from "./RoastDetailPage.module.css";
 
 export function RoastDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backPath = readFromPath(location.state) ?? "/";
+  const backLabel = labelForPath(backPath);
   const { userId } = useAuthState();
   const { tempUnit } = useTempUnit();
   const { showToast } = useToast();
@@ -280,9 +284,9 @@ export function RoastDetailPage() {
       <button
         type="button"
         className={styles.backLink}
-        onClick={() => navigate("/")}
+        onClick={() => navigate(backPath)}
       >
-        &larr; My Roasts
+        &larr; {backLabel}
       </button>
 
       {/* Header: bean name + date + rating */}
@@ -335,7 +339,11 @@ export function RoastDetailPage() {
         roasts={allBeanRoasts}
         compareIds={compareIds}
         onToggleCompare={handleToggleCompare}
-        onRowClick={(roastId) => navigate(`/roasts/${roastId}`)}
+        onRowClick={(roastId) =>
+          navigate(`/roasts/${roastId}`, {
+            state: { from: `/roasts/${id}` },
+          })
+        }
         tempUnit={tempUnit}
       />
 

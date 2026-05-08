@@ -196,6 +196,7 @@ export function ComparePage() {
           <Link
             key={roast.id}
             to={`/roasts/${roast.id}`}
+            state={{ from: `/compare?ids=${idsParam}` }}
             className={styles.legendLink}
           >
             <span
