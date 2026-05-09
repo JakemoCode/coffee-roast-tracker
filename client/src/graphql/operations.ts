@@ -146,6 +146,7 @@ export const PUBLIC_BEAN_QUERY = graphql(`
       score
       cropYear
       suggestedFlavors
+      isLocked
     }
   }
 `);

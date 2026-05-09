@@ -625,13 +625,11 @@ describe("bean resolvers — shortName", () => {
     expect(secondBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
   });
 
-  it("updateBean rejects identity fields (name/origin/process/variety) at the schema layer", async () => {
+  it("updateBean allows identity edits when the caller is the sole owner (typo fix)", async () => {
     const createResponse = await server.executeOperation(
       {
         query: CREATE_BEAN,
-        variables: {
-          input: { name: "Kenya Locked Identity", shortName: "KLI" },
-        },
+        variables: { input: { name: "Kenyya Tipo Bean", shortName: "KTB" } },
       },
       { contextValue: { prisma, userId: testUserId } }
     );
@@ -646,31 +644,283 @@ describe("bean resolvers — shortName", () => {
     createdUserBeanIds.push(created.id);
     createdBeanIds.push(created.bean.id);
 
-    // Send a raw mutation that tries to set name — GraphQL validation should reject it
-    // because `name` is no longer a field on UpdateBeanInput.
-    const response = await server.executeOperation(
+    const updateResponse = await server.executeOperation(
       {
-        query: `
-          mutation Bad($id: String!) {
-            updateBean(id: $id, input: { name: "Kenya Renamed" }) {
-              id
-            }
-          }
-        `,
-        variables: { id: created.bean.id },
+        query: UPDATE_BEAN,
+        variables: {
+          id: created.bean.id,
+          input: { name: "Kenya Typo Bean", origin: "Kenya" },
+        },
       },
       { contextValue: { prisma, userId: testUserId } }
     );
-    const body = response.body as {
+    const updateBody = updateResponse.body as {
       kind: "single";
       singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
     };
-    expect(body.singleResult.errors).toBeDefined();
-    expect(body.singleResult.errors![0]!.message).toMatch(/name/i);
+    expect(updateBody.singleResult.errors).toBeUndefined();
 
-    // The bean's name is unchanged
+    // normalizedName tracks the renamed value
     const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
-    expect(refetched!.name).toBe("Kenya Locked Identity");
+    expect(refetched!.name).toBe("Kenya Typo Bean");
+    expect(refetched!.origin).toBe("Kenya");
+    expect(refetched!.normalizedName).toBe("kenya typo bean");
+  });
+
+  it("updateBean rejects identity edits once the bean is shared", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Brazil Shared Bean", shortName: "BSB" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    // Second user adds the same bean to their library — this locks identity.
+    const secondUserBean = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: created.bean.id, shortName: "BSB-B" },
+    });
+    createdUserBeanIds.push(secondUserBean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: {
+          id: created.bean.id,
+          input: { name: "Brazil Renamed Bean" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeDefined();
+    expect(updateBody.singleResult.errors![0]!.extensions?.code).toBe("FORBIDDEN");
+
+    // Name unchanged
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.name).toBe("Brazil Shared Bean");
+  });
+
+  it("updateBean still allows usage-field edits on shared beans", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Colombia Shared Usage", shortName: "CSU" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const secondUserBean = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: created.bean.id, shortName: "CSU-B" },
+    });
+    createdUserBeanIds.push(secondUserBean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: created.bean.id, input: { score: 87 } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeUndefined();
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.score).toBe(87);
+  });
+
+  it("updateBean lets a non-creator linker edit usage fields on a shared bean (community-edit intent)", async () => {
+    // Creator (testUserId) makes the bean.
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Guatemala Community Bean", shortName: "GCB" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    // Second user adds it to their library.
+    const secondUserBean = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: created.bean.id, shortName: "GCB-B" },
+    });
+    createdUserBeanIds.push(secondUserBean.id);
+
+    // testUserIdB (non-creator) edits a usage field — allowed by design.
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: created.bean.id, input: { score: 92 } },
+      },
+      { contextValue: { prisma, userId: testUserIdB } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeUndefined();
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.score).toBe(92);
+  });
+
+  it("updateBean rejects identity+usage combo on shared bean atomically (no partial apply)", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Peru Shared Combo", shortName: "PSC" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const secondUserBean = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: created.bean.id, shortName: "PSC-B" },
+    });
+    createdUserBeanIds.push(secondUserBean.id);
+
+    // Combine an identity field (name) with a usage field (score). The whole
+    // mutation must be rejected — score must NOT be partially applied.
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: {
+          id: created.bean.id,
+          input: { name: "Peru Renamed Combo", score: 99 },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeDefined();
+    expect(updateBody.singleResult.errors![0]!.extensions?.code).toBe("FORBIDDEN");
+
+    const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
+    expect(refetched!.name).toBe("Peru Shared Combo");
+    expect(refetched!.score).toBeNull();
+  });
+
+  it("updateBean rejects renaming to a name that collides with another bean", async () => {
+    // Seed an existing bean to collide against
+    const existing = await prisma.bean.create({
+      data: { name: "Existing Collision Bean", normalizedName: "existing collision bean" },
+    });
+    createdBeanIds.push(existing.id);
+
+    // Create a fresh bean owned by testUserId
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Original Fresh Bean", shortName: "OFB" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: {
+          id: created.bean.id,
+          input: { name: "Existing Collision Bean" },
+        },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeDefined();
+    expect(updateBody.singleResult.errors![0]!.extensions?.code).toBe("BAD_USER_INPUT");
+  });
+
+  it("updateBean rejects single-word renames (re-validates 2-word rule)", async () => {
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Costa Rica Naranjo", shortName: "CRN" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const updateResponse = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: created.bean.id, input: { name: "Naranjo" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const updateBody = updateResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string; extensions?: { code?: string } }[] };
+    };
+    expect(updateBody.singleResult.errors).toBeDefined();
+    expect(updateBody.singleResult.errors![0]!.message).toContain("at least 2 words");
   });
 
   it("updateBean accepts only mutable fields", async () => {

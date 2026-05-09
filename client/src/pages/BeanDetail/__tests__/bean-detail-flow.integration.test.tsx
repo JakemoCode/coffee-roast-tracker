@@ -115,10 +115,10 @@ describe("BeanDetailPage integration", () => {
     );
   });
 
-  it("US-BD-2b: identity fields (origin/process/variety) are NOT editable in edit mode", async () => {
+  it("US-BD-2b: identity fields ARE editable on a sole-linked bean (typo-fix window)", async () => {
     const user = userEvent.setup();
     setupOwner();
-    renderBeanDetail();
+    renderBeanDetail("bean-1"); // isLocked: false in mock
 
     await waitForBeanLoaded();
     await user.click(screen.getByTestId("edit-btn"));
@@ -126,13 +126,36 @@ describe("BeanDetailPage integration", () => {
     // Score input proves we're in edit mode
     await screen.findByRole("textbox", { name: /^Score$/i });
 
-    // But identity fields stay as static values
+    // Identity fields are editable for the typo-fix window
+    expect(
+      screen.getByRole("textbox", { name: /^Origin$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: /^Variety$/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("bean-name-input")).toBeInTheDocument();
+  });
+
+  it("US-BD-2c: identity fields are NOT editable once the bean is shared (isLocked)", async () => {
+    const user = userEvent.setup();
+    setupOwner();
+    renderBeanDetail("bean-2"); // isLocked: true in mock
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: /Colombia Huila/i }),
+      ).toBeInTheDocument(),
+    );
+    await user.click(screen.getByTestId("edit-btn"));
+    await screen.findByRole("textbox", { name: /^Score$/i });
+
     expect(
       screen.queryByRole("textbox", { name: /^Origin$/i }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: /^Variety$/i }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("bean-name-input")).not.toBeInTheDocument();
   });
 
   // ---- US-BD-3: Owner: edit metadata (cancel — dead-end detection) ----

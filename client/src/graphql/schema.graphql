@@ -53,6 +53,7 @@ type Bean {
   score: Float
   suggestedFlavors: [String!]!
   roasts: [Roast!]!
+  isLocked: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -200,6 +201,10 @@ input CreateBeanInput {
 }
 
 input UpdateBeanInput {
+  name: String
+  origin: String
+  process: String
+  variety: String
   cropYear: Int
   sourceUrl: String
   elevation: String

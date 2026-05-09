@@ -200,6 +200,10 @@ export const beanResolvers = {
       { id, input }: {
         id: string;
         input: {
+          name?: string | null;
+          origin?: string | null;
+          process?: string | null;
+          variety?: string | null;
           cropYear?: number | null;
           sourceUrl?: string | null;
           elevation?: string | null;
@@ -210,6 +214,11 @@ export const beanResolvers = {
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
+      // Auth model: any user with this bean in their library may edit it.
+      // Usage fields (score, bagNotes, elevation, cropYear, sourceUrl) are
+      // properties of the green bean itself — community-edit is intentional.
+      // Identity fields (name, origin, process, variety) are gated separately
+      // below and lock once linkCount > 1.
       const userBean = await ctx.prisma.userBean.findUnique({
         where: { userId_beanId: { userId, beanId: id } },
       });
@@ -218,8 +227,54 @@ export const beanResolvers = {
           extensions: { code: "NOT_FOUND" },
         });
       }
-      // Identity fields are locked after creation — see UpdateBeanInput.
-      return ctx.prisma.bean.update({ where: { id }, data: input });
+
+      const { name, origin, process, variety, ...usageFields } = input;
+      const hasNewName = name !== undefined && name !== null;
+      const identityChanged =
+        name !== undefined || origin !== undefined ||
+        process !== undefined || variety !== undefined;
+
+      if (hasNewName) requireMultiWordName(name);
+
+      // Keep normalizedName in lock-step with name so dedup lookups stay accurate.
+      const normalizedName = hasNewName ? normalizeName(name) : undefined;
+
+      try {
+        // Identity edits are guarded by a count check on UserBean. Wrap
+        // the check + update in a serializable transaction so a concurrent
+        // addBeanToLibrary can't slip in between count and update.
+        return await ctx.prisma.$transaction(
+          async (tx) => {
+            if (identityChanged) {
+              const linkCount = await tx.userBean.count({ where: { beanId: id } });
+              if (linkCount > 1) {
+                throw new GraphQLError(
+                  "This bean is in another user's library — name, origin, process, and variety can no longer be edited",
+                  { extensions: { code: "FORBIDDEN" } },
+                );
+              }
+            }
+            return tx.bean.update({
+              where: { id },
+              data: { name: name ?? undefined, origin, process, variety, normalizedName, ...usageFields },
+            });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (err) {
+        // P2002 on normalizedName means the renamed bean would collide
+        // with another existing bean — surface as a clean user error.
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002"
+        ) {
+          throw new GraphQLError(
+            "Another bean already has this name — pick a different one or add it to your library instead",
+            { extensions: { code: "BAD_USER_INPUT" } },
+          );
+        }
+        throw err;
+      }
     },
 
     updateBeanSuggestedFlavors: async (
@@ -261,6 +316,14 @@ export const beanResolvers = {
 
       await ctx.prisma.userBean.delete({ where: { id: userBean.id } });
       return true;
+    },
+  },
+
+  Bean: {
+    // See Bean.isLocked in typeDefs for semantics.
+    isLocked: async (parent: { id: string }, _: unknown, ctx: Context) => {
+      const count = await ctx.prisma.userBean.count({ where: { beanId: parent.id } });
+      return count > 1;
     },
   },
 };
