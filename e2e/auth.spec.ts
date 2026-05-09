@@ -1,4 +1,4 @@
-import { test, expect, waitForDashboard, waitForLanding } from "./helpers.js";
+import { test, expect, waitForDashboard, waitForLanding, waitForBeanRoastsLoaded } from "./helpers.js";
 
 // ════════════════════════════════════════════════════════════════════
 //  AUTH BOUNDARIES
@@ -13,7 +13,7 @@ test.describe("Public routes (no auth required)", () => {
   test("bean library is accessible without auth", async ({ page }) => {
     await page.goto("/beans");
     // Should see community beans, not "sign in" redirect
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("bean detail is accessible without auth", async ({ page }) => {
@@ -23,15 +23,15 @@ test.describe("Public routes (no auth required)", () => {
   });
 
   test("public roast detail is accessible without auth", async ({ page }) => {
-    // Navigate through a bean to find a roast
+    // Use Kenya AA explicitly — it has multiple public roasts in seed.
     await page.goto("/beans");
-    await page.locator("[data-testid='bean-card']").first().click();
+    await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
     await expect(page).toHaveURL(/\/beans\//);
-    const roastLink = page.locator("[data-testid='roast-row'], table tbody tr a").first();
-    if (await roastLink.isVisible({ timeout: 5_000 })) {
-      await roastLink.click();
-      await expect(page).toHaveURL(/\/roasts\//);
-    }
+    await waitForBeanRoastsLoaded(page);
+    const roastLink = page.locator("[data-testid='roast-row']").first();
+    await expect(roastLink).toBeVisible({ timeout: 5_000 });
+    await roastLink.click();
+    await expect(page).toHaveURL(/\/roasts\//);
   });
 
   test("private roast shows 'this roast is private' message", async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe("Protected routes (auth required)", () => {
 
   test("logged-out header shows Sign In button but not Upload or My Roasts", async ({ page }) => {
     await page.goto("/beans"); // Public page with header
-    await expect(page.locator("text=/sign in/i").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/sign in/i").first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("button:text('Upload')")).not.toBeVisible();
   });
 });

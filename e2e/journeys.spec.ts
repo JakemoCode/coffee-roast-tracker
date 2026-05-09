@@ -1,4 +1,4 @@
-import { test, expect, waitForDashboard, waitForBeanLibrary, waitForRoastDetail, switchE2eUser } from "./helpers.js";
+import { test, expect, waitForDashboard, waitForBeanLibrary, waitForRoastDetail, waitForBeanRoastsLoaded, switchE2eUser } from "./helpers.js";
 import * as path from "path";
 
 const KLOG_FIXTURE = path.resolve(__dirname, "../mocks/sample-roasts/EGB 0320a.klog");
@@ -16,26 +16,26 @@ test.describe("Journey: logged-out browsing", () => {
   test("visitor browses landing → bean library → bean detail → roast detail", async ({ page }) => {
     // Step 1: Land on landing page
     await page.goto("/");
-    await expect(page.locator("text=/roasts? logged/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/roasts? logged/i")).toBeVisible({ timeout: 5_000 });
 
     // Step 2: Navigate to bean library
     await page.click("nav >> text=/beans/i");
     await expect(page).toHaveURL("/beans");
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
 
-    // Step 3: Click a bean
-    await page.locator("[data-testid='bean-card']").first().click();
+    // Step 3: Click a bean — Kenya AA has multiple public roasts in seed.
+    await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
     await expect(page).toHaveURL(/\/beans\//);
+    await waitForBeanRoastsLoaded(page);
 
-    // Step 4: Click a roast from bean's roast history (if visible)
-    const roastLink = page.locator("[data-testid='roast-row'], table tbody tr a").first();
-    if (await roastLink.isVisible({ timeout: 5_000 })) {
-      await roastLink.click();
-      await expect(page).toHaveURL(/\/roasts\//);
-      // Should see chart but no edit controls
-      await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
-      await expect(page.locator("button:text('Delete')")).not.toBeVisible();
-    }
+    // Step 4: Click a roast from bean's roast history
+    const roastLink = page.locator("[data-testid='roast-row']").first();
+    await expect(roastLink).toBeVisible({ timeout: 5_000 });
+    await roastLink.click();
+    await expect(page).toHaveURL(/\/roasts\//);
+    // Should see chart but no edit controls
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator("button:text('Delete')")).not.toBeVisible();
   });
 });
 
@@ -52,11 +52,11 @@ test.describe("Journey: upload then compare", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
     await page.click("button:text('Save')");
 
     // Step 2: Should land on roast detail
-    await expect(page).toHaveURL(/\/roasts\//, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
     await waitForRoastDetail(page);
 
     // Step 3: Compare inline via the roast metrics table checkboxes.
@@ -64,10 +64,9 @@ test.describe("Journey: upload then compare", () => {
     // checkboxes on the roast detail page — checking a row overlays
     // that roast's data onto the chart.
     const compareCheckbox = page.locator('input[type="checkbox"][aria-label^="Compare with"]').first();
-    if ((await compareCheckbox.count()) > 0) {
-      await compareCheckbox.check();
-      await expect(compareCheckbox).toBeChecked();
-    }
+    await expect(compareCheckbox).toBeVisible({ timeout: 5_000 });
+    await compareCheckbox.check();
+    await expect(compareCheckbox).toBeChecked();
   });
 });
 
@@ -85,6 +84,8 @@ test.describe("Journey: add bean then upload", () => {
     await page.fill("input[placeholder*='Yirgacheffe' i]", "Oaxaca, Mexico");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
+    // Combobox autocomplete is best-effort — typed value is also accepted
+    // by Save, so a missing dropdown option is not a test failure.
     const option = page.locator("[role='option']:text-is('Natural')");
     if (await option.isVisible({ timeout: 2_000 })) {
       await option.click();
@@ -118,26 +119,23 @@ test.describe("Journey: filter then compare", () => {
 
     // Step 2: Filter by bean
     const beanFilter = page.locator("[data-testid='bean-filter'], [aria-label='Filter by bean']");
-    if (await beanFilter.isVisible({ timeout: 3_000 })) {
-      await beanFilter.selectOption({ label: "Kenya Nyeri Ichamama AA" });
-      await page.waitForTimeout(500);
-    }
+    await expect(beanFilter).toBeVisible({ timeout: 3_000 });
+    await beanFilter.selectOption({ label: "Kenya Nyeri Ichamama AA" });
+    await page.waitForTimeout(500);
 
     // Step 3: Select two roasts
     const checkboxes = page.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    if (count >= 2) {
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
+    expect(await checkboxes.count()).toBeGreaterThanOrEqual(2);
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
 
-      // Step 4: Compare
-      await page.locator("button:has-text('Compare')").click();
-      await expect(page).toHaveURL(/\/compare\?ids=/, { timeout: 5_000 });
+    // Step 4: Compare
+    await page.locator("button:has-text('Compare')").click();
+    await expect(page).toHaveURL(/\/compare\?ids=/, { timeout: 5_000 });
 
-      // Step 5: Navigate back
-      await page.click("nav >> text='My Roasts'");
-      await waitForDashboard(page);
-    }
+    // Step 5: Navigate back
+    await page.click("nav >> text='My Roasts'");
+    await waitForDashboard(page);
   });
 });
 
@@ -156,13 +154,12 @@ test.describe("Journey: edit then delete roast", () => {
 
     // Step 2: Edit notes
     const editBtn = page.locator("button:text('Edit')").first();
-    if (await editBtn.isVisible({ timeout: 5_000 })) {
-      await editBtn.click();
-      const textarea = page.locator("textarea").first();
-      await textarea.fill("Journey 5 — about to delete");
-      await page.locator("button:text('Save')").first().click();
-      await expect(page.locator("text='Journey 5 — about to delete'")).toBeVisible({ timeout: 5_000 });
-    }
+    await expect(editBtn).toBeVisible({ timeout: 5_000 });
+    await editBtn.click();
+    const textarea = page.locator("textarea").first();
+    await textarea.fill("Journey 5 — about to delete");
+    await page.locator("button:text('Save')").first().click();
+    await expect(page.locator("text='Journey 5 — about to delete'")).toBeVisible({ timeout: 5_000 });
 
     // Step 3: Delete roast
     const deleteBtn = page.locator("button:has-text('Delete')");
@@ -174,7 +171,7 @@ test.describe("Journey: edit then delete roast", () => {
     await page.locator("button:has-text('Confirm'), button:has-text('Yes'), button:has-text('Delete')").last().click();
 
     // Step 5: Should land on dashboard
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/", { timeout: 5_000 });
     await waitForDashboard(page);
   });
 });

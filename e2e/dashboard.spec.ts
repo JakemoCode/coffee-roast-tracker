@@ -102,43 +102,36 @@ test.describe("Dashboard compare selection", () => {
     await page.goto("/");
     await waitForDashboard(page);
     const checkboxes = page.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    if (count >= 2) {
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
-      const compareBtn = page.locator("button:has-text('Compare')");
-      await expect(compareBtn).toBeEnabled({ timeout: 3_000 });
-    }
+    expect(await checkboxes.count()).toBeGreaterThanOrEqual(2);
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+    const compareBtn = page.locator("button:has-text('Compare')");
+    await expect(compareBtn).toBeEnabled({ timeout: 3_000 });
   });
 
   test("selecting 5 roasts disables additional checkboxes", async ({ authedPage: page }) => {
     await page.goto("/");
     await waitForDashboard(page);
     const checkboxes = page.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    if (count >= 6) {
-      // Select 5
-      for (let i = 0; i < 5; i++) {
-        await checkboxes.nth(i).check();
-      }
-      // 6th checkbox should be disabled
-      await expect(checkboxes.nth(5)).toBeDisabled({ timeout: 3_000 });
-      // Should show a message about max limit
-      await expect(page.locator("text=/max|limit|5/i").first()).toBeVisible();
+    expect(await checkboxes.count()).toBeGreaterThanOrEqual(6);
+    for (let i = 0; i < 5; i++) {
+      await checkboxes.nth(i).check();
     }
+    // 6th checkbox should be disabled
+    await expect(checkboxes.nth(5)).toBeDisabled({ timeout: 3_000 });
+    // Should show a message about max limit
+    await expect(page.locator("text=/max|limit|5/i").first()).toBeVisible();
   });
 
   test("compare button navigates to compare page with selected IDs", async ({ authedPage: page }) => {
     await page.goto("/");
     await waitForDashboard(page);
     const checkboxes = page.locator('input[type="checkbox"]');
-    const count = await checkboxes.count();
-    if (count >= 2) {
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
-      await page.locator("button:has-text('Compare')").click();
-      await expect(page).toHaveURL(/\/compare\?ids=/);
-    }
+    expect(await checkboxes.count()).toBeGreaterThanOrEqual(2);
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+    await page.locator("button:has-text('Compare')").click();
+    await expect(page).toHaveURL(/\/compare\?ids=/);
   });
 });
 
@@ -151,14 +144,14 @@ test.describe("Dashboard empty state", () => {
     await switchE2eUser(page, "clerk_seed_dave_004");
     await page.goto("/");
     // Should show the steaming coffee cup SVG and upload prompt
-    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("svg, img[alt*='coffee'], [data-testid='empty-state']").first()).toBeVisible();
   });
 
   test("empty state upload button opens upload modal", async ({ authedPage: page }) => {
     await switchE2eUser(page, "clerk_seed_dave_004");
     await page.goto("/");
-    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 5_000 });
     await page.locator("button:has-text('Upload'), a:has-text('Upload')").first().click();
     await expect(page.locator("text=/upload roast|drop your/i")).toBeVisible({ timeout: 5_000 });
   });

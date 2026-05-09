@@ -94,6 +94,7 @@ function RoastTableRow({
 
   return (
     <tr
+      data-testid="roast-row"
       className={`${styles.row} ${isSelected ? styles.rowSelected : ""} ${onRowClick ? styles.clickable : ""}`}
       onClick={() => onRowClick?.(id)}
     >

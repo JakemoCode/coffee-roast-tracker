@@ -42,27 +42,46 @@ export { expect } from "@playwright/test";
 
 /** Wait for the landing page to load (community stats visible). */
 export async function waitForLanding(page: Page) {
-  await expect(page.locator("text=/\\d+ roasts? logged/i")).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator("text=/\\d+ roasts? logged/i")).toBeVisible();
 }
 
 /** Wait for the dashboard page to finish loading data. */
 export async function waitForDashboard(page: Page) {
-  await expect(page.locator("h1")).toContainText("My Roasts", { timeout: 10_000 });
+  await expect(page.locator("h1")).toContainText("My Roasts");
+  // Wait for either the roasts table to populate or the empty state to
+  // render. Without this, tests that count rows/checkboxes race the
+  // Apollo query.
+  await expect(
+    page.locator("[data-testid='roast-row']").first()
+      .or(page.locator("text=/upload.*first roast|no roasts/i")),
+  ).toBeVisible();
 }
 
 /** Wait for the bean library page to finish loading. */
 export async function waitForBeanLibrary(page: Page) {
-  await expect(page.locator("h1")).toContainText(/Beans|Bean Library|Bean Catalog/i, { timeout: 10_000 });
+  await expect(page.locator("h1")).toContainText(/Beans|Bean Library|Bean Catalog/i);
 }
 
 /** Wait for a bean detail page to load. */
 export async function waitForBeanDetail(page: Page) {
-  await expect(page.locator("[data-testid='bean-detail'], h1, h2").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator("[data-testid='bean-detail'], h1, h2").first()).toBeVisible();
+}
+
+/**
+ * Wait for the roast history table on Bean Detail to populate (or the
+ * empty state to render). Use after navigating to a bean before asserting
+ * on or clicking a roast row.
+ */
+export async function waitForBeanRoastsLoaded(page: Page) {
+  await expect(
+    page.locator("[data-testid='roast-history'] [data-testid='roast-row']").first()
+      .or(page.locator("[data-testid='no-roasts']")),
+  ).toBeVisible();
 }
 
 /** Wait for a roast detail page to load. */
 export async function waitForRoastDetail(page: Page) {
-  await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible();
 }
 
 /**
