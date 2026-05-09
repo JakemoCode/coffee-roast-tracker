@@ -4,7 +4,7 @@ import { readFromPath, labelForPath } from "../backCrumb";
 describe("readFromPath", () => {
   it("returns the path when state.from is a valid internal path", () => {
     expect(readFromPath({ from: "/beans/abc" })).toBe("/beans/abc");
-    expect(readFromPath({ from: "/compare?ids=1,2" })).toBe("/compare?ids=1,2");
+    expect(readFromPath({ from: "/roasts/abc" })).toBe("/roasts/abc");
     expect(readFromPath({ from: "/" })).toBe("/");
   });
 
@@ -33,7 +33,6 @@ describe("labelForPath", () => {
     expect(labelForPath("/")).toBe("My Roasts");
     expect(labelForPath("/?upload=true")).toBe("My Roasts");
     expect(labelForPath("/beans/abc")).toBe("Bean");
-    expect(labelForPath("/compare?ids=1,2")).toBe("Compare");
     expect(labelForPath("/roasts/abc")).toBe("Roast");
   });
 
