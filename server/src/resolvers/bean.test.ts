@@ -53,6 +53,15 @@ const UPDATE_BEAN = `
   }
 `;
 
+const BEAN_BY_ID = `
+  query Bean($id: String!) {
+    bean(id: $id) {
+      id
+      isLocked
+    }
+  }
+`;
+
 let server: ApolloServer<Context>;
 let testUserId: string;
 let testUserIdB: string;
@@ -752,6 +761,55 @@ describe("bean resolvers — shortName", () => {
     expect(updateBody.singleResult.errors).toBeUndefined();
     const refetched = await prisma.bean.findUnique({ where: { id: created.bean.id } });
     expect(refetched!.score).toBe(87);
+  });
+
+  it("bean.isLocked is exposed via the GraphQL Bean type and reflects link count", async () => {
+    // Regression: the Bean field resolver must be merged into the resolver
+    // map (resolvers/index.ts), or this returns null and the page errors.
+    const createResponse = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name: "Brazil Lock Probe", shortName: "BLP" } },
+      },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const createBody = createResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null };
+    };
+    const created = createBody.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+
+    const soleResponse = await server.executeOperation(
+      { query: BEAN_BY_ID, variables: { id: created.bean.id } },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const soleBody = soleResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(soleBody.singleResult.errors).toBeUndefined();
+    expect((soleBody.singleResult.data!.bean as { isLocked: boolean }).isLocked).toBe(false);
+
+    const secondUserBean = await prisma.userBean.create({
+      data: { userId: testUserIdB, beanId: created.bean.id, shortName: "BLP-B" },
+    });
+    createdUserBeanIds.push(secondUserBean.id);
+
+    const sharedResponse = await server.executeOperation(
+      { query: BEAN_BY_ID, variables: { id: created.bean.id } },
+      { contextValue: { prisma, userId: testUserId } }
+    );
+    const sharedBody = sharedResponse.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null; errors?: { message: string }[] };
+    };
+    expect(sharedBody.singleResult.errors).toBeUndefined();
+    expect((sharedBody.singleResult.data!.bean as { isLocked: boolean }).isLocked).toBe(true);
   });
 
   it("updateBean lets a non-creator linker edit usage fields on a shared bean (community-edit intent)", async () => {
