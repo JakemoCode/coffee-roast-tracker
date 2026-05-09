@@ -47,6 +47,11 @@ export const typeDefs = gql`
     score: Float
     suggestedFlavors: [String!]!
     roasts: [Roast!]!
+    # True once two or more users have linked this bean — identity fields
+    # (name, origin, process, variety) become immutable to protect the
+    # shared catalog. While only one user has it, the creator can still
+    # fix typos.
+    isLocked: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime!
   }
@@ -209,11 +214,16 @@ export const typeDefs = gql`
     suggestedFlavors: [String!]
   }
 
-  # Bean identity fields (name, origin, process, variety) are locked after
-  # creation — they're what makes a bean *that bean* and edits would corrupt
-  # the shared catalog. If an entry is wrong, create a new bean and delete
-  # the old one. The remaining fields describe usage and stay community-editable.
+  # Identity fields (name, origin, process, variety) are editable only
+  # while the caller is the sole user who has linked this bean — that
+  # gives a typo-fix window. As soon as another user adds it to their
+  # library, those fields lock to protect the shared catalog. The
+  # remaining fields are always editable by any library member.
   input UpdateBeanInput {
+    name: String
+    origin: String
+    process: String
+    variety: String
     cropYear: Int
     sourceUrl: String
     elevation: String

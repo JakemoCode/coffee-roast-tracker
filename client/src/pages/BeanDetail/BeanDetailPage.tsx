@@ -79,10 +79,14 @@ export function BeanDetailPage() {
     skip: !beanId || isOwner,
   });
 
-  // Edit state — name/origin/process/variety are bean identity and can't be
-  // edited after creation; correcting a bad entry means creating a new bean.
+  // Edit state — identity fields (name/origin/process/variety) are editable
+  // only while the bean is sole-linked (bean.isLocked === false).
   const [editing, setEditing] = useState(false);
   const [editFields, setEditFields] = useState({
+    name: "",
+    origin: "",
+    process: "",
+    variety: "",
     elevation: "",
     score: "",
     shortName: "",
@@ -127,6 +131,10 @@ export function BeanDetailPage() {
   function handleStartEdit() {
     if (!bean) return;
     setEditFields({
+      name: bean.name,
+      origin: bean.origin ?? "",
+      process: bean.process ?? "",
+      variety: bean.variety ?? "",
       elevation: bean.elevation ?? "",
       score: bean.score != null ? String(bean.score) : "",
       shortName: userBean?.shortName ?? "",
@@ -140,15 +148,34 @@ export function BeanDetailPage() {
 
   async function handleSaveEdit() {
     if (!bean) return;
-    updateBean({
-      variables: {
-        id: bean.id,
-        input: {
-          elevation: editFields.elevation.trim() || null,
-          score: editFields.score ? parseFloat(editFields.score) : null,
+    // Identity fields are only writable while the bean is sole-linked.
+    // The server enforces this; we mirror it here so the input stays minimal.
+    const identityEdits = bean.isLocked
+      ? {}
+      : {
+          name: editFields.name.trim(),
+          origin: editFields.origin.trim() || null,
+          process: editFields.process.trim() || null,
+          variety: editFields.variety.trim() || null,
+        };
+    try {
+      await updateBean({
+        variables: {
+          id: bean.id,
+          input: {
+            ...identityEdits,
+            elevation: editFields.elevation.trim() || null,
+            score: editFields.score ? parseFloat(editFields.score) : null,
+          },
         },
-      },
-    });
+      });
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Failed to update bean",
+        "error",
+      );
+      return;
+    }
     if (userBean && editFields.shortName.trim() !== (userBean.shortName ?? "")) {
       try {
         await updateUserBean({
@@ -257,7 +284,17 @@ export function BeanDetailPage() {
       </Link>
 
       <div className={styles.header}>
-        <h1 className={styles.beanName}>{bean.name}</h1>
+        {editing && !bean.isLocked ? (
+          <input
+            className={styles.metaInput}
+            value={editFields.name}
+            onChange={(e) => setEditFields((p) => ({ ...p, name: e.target.value }))}
+            aria-label="Name"
+            data-testid="bean-name-input"
+          />
+        ) : (
+          <h1 className={styles.beanName}>{bean.name}</h1>
+        )}
         {isOwner && !editing && (
           <div className={styles.editBtnRow}>
             <button
@@ -293,7 +330,16 @@ export function BeanDetailPage() {
       <div className={styles.metaGrid} data-testid="bean-metadata">
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Origin</div>
-          <div className={styles.metaValue}>{bean.origin ?? "\u2014"}</div>
+          {editing && !bean.isLocked ? (
+            <input
+              className={styles.metaInput}
+              value={editFields.origin}
+              onChange={(e) => setEditFields((p) => ({ ...p, origin: e.target.value }))}
+              aria-label="Origin"
+            />
+          ) : (
+            <div className={styles.metaValue}>{bean.origin ?? "\u2014"}</div>
+          )}
         </div>
         {isOwner && (
           <div className={styles.metaCard} data-testid="short-name-card">
@@ -316,11 +362,29 @@ export function BeanDetailPage() {
         )}
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Process</div>
-          <div className={styles.metaValue}>{bean.process ?? "\u2014"}</div>
+          {editing && !bean.isLocked ? (
+            <input
+              className={styles.metaInput}
+              value={editFields.process}
+              onChange={(e) => setEditFields((p) => ({ ...p, process: e.target.value }))}
+              aria-label="Process"
+            />
+          ) : (
+            <div className={styles.metaValue}>{bean.process ?? "\u2014"}</div>
+          )}
         </div>
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Variety</div>
-          <div className={styles.metaValue}>{bean.variety ?? "\u2014"}</div>
+          {editing && !bean.isLocked ? (
+            <input
+              className={styles.metaInput}
+              value={editFields.variety}
+              onChange={(e) => setEditFields((p) => ({ ...p, variety: e.target.value }))}
+              aria-label="Variety"
+            />
+          ) : (
+            <div className={styles.metaValue}>{bean.variety ?? "\u2014"}</div>
+          )}
         </div>
         <div className={styles.metaCard}>
           <div className={styles.metaLabel}>Score</div>

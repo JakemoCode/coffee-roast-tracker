@@ -44,4 +44,8 @@ export const resolvers = {
   Roast: {
     ...flavorResolvers.Roast,
   },
+
+  Bean: {
+    ...beanResolvers.Bean,
+  },
 };

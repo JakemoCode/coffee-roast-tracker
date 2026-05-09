@@ -63,6 +63,7 @@ const mockBean = {
     score: 87,
     cropYear: "2024",
     suggestedFlavors: ["Blueberry", "Citrus", "Floral"],
+    isLocked: false,
   },
 };
 
