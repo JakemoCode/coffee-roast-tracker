@@ -18,7 +18,6 @@ export function readFromPath(state: unknown): string | null {
 export function labelForPath(path: string): string {
   if (path === "/" || path.startsWith("/?")) return "My Roasts";
   if (path.startsWith("/beans")) return "Bean";
-  if (path.startsWith("/compare")) return "Compare";
   if (path.startsWith("/roasts")) return "Roast";
   return "Back";
 }

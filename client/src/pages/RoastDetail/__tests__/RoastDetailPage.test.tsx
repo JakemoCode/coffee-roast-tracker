@@ -320,14 +320,6 @@ describe("RoastDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("back-crumb labels the referrer route when state.from is /compare", () => {
-    setupOwnerMocks();
-    renderWithRouter("roast-1", { state: { from: "/compare?ids=a,b" } });
-    expect(
-      screen.getByRole("button", { name: /← Compare/i }),
-    ).toBeInTheDocument();
-  });
-
   it("back-crumb falls back to default when state.from is malformed", () => {
     setupOwnerMocks();
     renderWithRouter("roast-1", { state: { from: 123 } });
