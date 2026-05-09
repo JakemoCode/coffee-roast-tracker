@@ -130,11 +130,15 @@ test.describe("Roast Detail delete", () => {
 //  ROAST DETAIL — "OTHER ROASTS OF THIS BEAN" TABLE
 // ════════════════════════════════════════════════════════════════════
 
+// Use Colombia, not Kenya — the "Roast Detail delete" describe above
+// deletes from Kenya, and a local rerun without reseed eventually leaves
+// Kenya with <2 roasts, breaking sibling assertions. Colombia is untouched
+// by other tests, so these stay order-independent.
 test.describe("Roast Detail other roasts table", () => {
   test("shows other roasts of the same bean at the bottom", async ({ authedPage: page }) => {
     await page.goto("/");
     await waitForDashboard(page);
-    await page.locator("text='Kenya Nyeri Ichamama AA'").first().click();
+    await page.locator("text='Colombia Huila Excelso EP'").first().click();
     await expect(page).toHaveURL(/\/roasts\//);
     await waitForRoastDetail(page);
 
@@ -145,7 +149,7 @@ test.describe("Roast Detail other roasts table", () => {
   test("checking a sibling roast in the metrics table marks it compared", async ({ authedPage: page }) => {
     await page.goto("/");
     await waitForDashboard(page);
-    await page.locator("text='Kenya Nyeri Ichamama AA'").first().click();
+    await page.locator("text='Colombia Huila Excelso EP'").first().click();
     await expect(page).toHaveURL(/\/roasts\//);
     await waitForRoastDetail(page);
 
