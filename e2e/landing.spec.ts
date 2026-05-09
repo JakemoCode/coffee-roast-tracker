@@ -96,7 +96,7 @@ test.describe("Public browsing from landing", () => {
     await roastRow.click();
     await expect(page).toHaveURL(/\/roasts\//);
     // Should see chart and metrics but NOT edit controls
-    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("button:text('Delete')")).not.toBeVisible();
   });
 });

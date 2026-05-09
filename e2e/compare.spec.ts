@@ -27,7 +27,7 @@ test.describe("Compare from dashboard", () => {
     await checkboxes.nth(1).check();
     await page.locator("button:has-text('Compare')").click();
     await expect(page).toHaveURL(/\/compare\?ids=/);
-    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("compare page shows metrics table with star rating column", async ({ authedPage: page }) => {
@@ -40,7 +40,7 @@ test.describe("Compare from dashboard", () => {
     await checkboxes.nth(1).check();
     await page.locator("button:has-text('Compare')").click();
     await expect(page).toHaveURL(/\/compare\?ids=/);
-    await expect(page.getByRole("columnheader", { name: "Rating" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("columnheader", { name: "Rating" })).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -86,6 +86,6 @@ test.describe("Cross-bean comparison", () => {
     await colombiaRow.locator('input[type="checkbox"]').check();
     await page.locator("button:has-text('Compare')").click();
     await expect(page).toHaveURL(/\/compare\?ids=/);
-    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 5_000 });
   });
 });

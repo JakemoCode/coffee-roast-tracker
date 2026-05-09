@@ -16,12 +16,12 @@ test.describe("Journey: logged-out browsing", () => {
   test("visitor browses landing → bean library → bean detail → roast detail", async ({ page }) => {
     // Step 1: Land on landing page
     await page.goto("/");
-    await expect(page.locator("text=/roasts? logged/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/roasts? logged/i")).toBeVisible({ timeout: 5_000 });
 
     // Step 2: Navigate to bean library
     await page.click("nav >> text=/beans/i");
     await expect(page).toHaveURL("/beans");
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
 
     // Step 3: Click a bean — Kenya AA has multiple public roasts in seed.
     await page.locator("[data-testid='bean-card']:has-text('Kenya')").first().click();
@@ -34,7 +34,7 @@ test.describe("Journey: logged-out browsing", () => {
     await roastLink.click();
     await expect(page).toHaveURL(/\/roasts\//);
     // Should see chart but no edit controls
-    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("canvas, [data-testid='roast-chart']").first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("button:text('Delete')")).not.toBeVisible();
   });
 });
@@ -52,11 +52,11 @@ test.describe("Journey: upload then compare", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
     await page.click("button:text('Save')");
 
     // Step 2: Should land on roast detail
-    await expect(page).toHaveURL(/\/roasts\//, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
     await waitForRoastDetail(page);
 
     // Step 3: Compare inline via the roast metrics table checkboxes.
@@ -171,7 +171,7 @@ test.describe("Journey: edit then delete roast", () => {
     await page.locator("button:has-text('Confirm'), button:has-text('Yes'), button:has-text('Delete')").last().click();
 
     // Step 5: Should land on dashboard
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/", { timeout: 5_000 });
     await waitForDashboard(page);
   });
 });

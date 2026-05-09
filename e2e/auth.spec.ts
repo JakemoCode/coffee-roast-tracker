@@ -13,7 +13,7 @@ test.describe("Public routes (no auth required)", () => {
   test("bean library is accessible without auth", async ({ page }) => {
     await page.goto("/beans");
     // Should see community beans, not "sign in" redirect
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("bean detail is accessible without auth", async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe("Protected routes (auth required)", () => {
 
   test("logged-out header shows Sign In button but not Upload or My Roasts", async ({ page }) => {
     await page.goto("/beans"); // Public page with header
-    await expect(page.locator("text=/sign in/i").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/sign in/i").first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("button:text('Upload')")).not.toBeVisible();
   });
 });

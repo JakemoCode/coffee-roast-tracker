@@ -144,14 +144,14 @@ test.describe("Dashboard empty state", () => {
     await switchE2eUser(page, "clerk_seed_dave_004");
     await page.goto("/");
     // Should show the steaming coffee cup SVG and upload prompt
-    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("svg, img[alt*='coffee'], [data-testid='empty-state']").first()).toBeVisible();
   });
 
   test("empty state upload button opens upload modal", async ({ authedPage: page }) => {
     await switchE2eUser(page, "clerk_seed_dave_004");
     await page.goto("/");
-    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/upload.*first roast|no roasts/i")).toBeVisible({ timeout: 5_000 });
     await page.locator("button:has-text('Upload'), a:has-text('Upload')").first().click();
     await expect(page.locator("text=/upload roast|drop your/i")).toBeVisible({ timeout: 5_000 });
   });

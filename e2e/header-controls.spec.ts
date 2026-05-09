@@ -52,7 +52,7 @@ test.describe("Temperature toggle", () => {
   test("logged-out users can also toggle temp and it persists via localStorage", async ({ page }) => {
     await page.goto("/beans"); // Public page with header
     const tempToggle = page.locator("[data-testid='temp-toggle'], button:has-text('°C'), button:has-text('°F')").first();
-    await expect(tempToggle).toBeVisible({ timeout: 10_000 });
+    await expect(tempToggle).toBeVisible({ timeout: 5_000 });
     await tempToggle.click();
     await page.waitForTimeout(500);
     // Verify it changed

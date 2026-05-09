@@ -41,7 +41,7 @@ test.describe("Upload flow", () => {
     await fileInput.setInputFiles(KLOG_FIXTURE);
 
     // Should show preview with parsed metadata
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("text=/roast date/i")).toBeVisible();
     await expect(page.locator("text=/duration/i")).toBeVisible();
 
@@ -56,14 +56,14 @@ test.describe("Upload flow", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
 
     await page.click("button:text('Save')");
 
     // Modal should close (save = close on success)
     await expect(page.locator("text=/upload roast/i")).not.toBeVisible({ timeout: 5_000 });
     // Should navigate to new roast detail page
-    await expect(page).toHaveURL(/\/roasts\//, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
   });
 
   test("no bean match shows banner prompting inline bean creation", async ({ authedPage: page }) => {
@@ -73,7 +73,7 @@ test.describe("Upload flow", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE_2);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
 
     // Should show no-bean-match OR bean-match banner depending on seed data.
     // When no match: "No bean match found" text + "Add New Bean" CTA.
@@ -101,7 +101,7 @@ test.describe("Upload flow", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE_2);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
 
     // Create new bean inline (minimal mode: name + shortName required)
     await page.locator("button:has-text('Add'), button:has-text('Create'), button:has-text('new bean')").first().click();
@@ -111,7 +111,7 @@ test.describe("Upload flow", () => {
     await page.click("button:text('Save')");
 
     // Should navigate to roast detail
-    await expect(page).toHaveURL(/\/roasts\//, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/roasts\//, { timeout: 5_000 });
     // Banner should encourage completing bean details
     await expect(page.locator("text=/complete.*bean|missing.*origin/i")).toBeVisible({ timeout: 5_000 });
   });
@@ -136,10 +136,10 @@ test.describe("Upload parsing indicator", () => {
     const parsedSuccess = page.locator("text=/parsed successfully/i");
 
     // Either the parsing indicator is visible OR parsing already completed
-    await expect(parsingIndicator.or(parsedSuccess)).toBeVisible({ timeout: 10_000 });
+    await expect(parsingIndicator.or(parsedSuccess)).toBeVisible({ timeout: 5_000 });
 
     // Eventually preview should load
-    await expect(parsedSuccess).toBeVisible({ timeout: 10_000 });
+    await expect(parsedSuccess).toBeVisible({ timeout: 5_000 });
   });
 });
 
@@ -155,7 +155,7 @@ test.describe("Upload parse warnings", () => {
 
     const fileInput = page.locator("[data-testid='file-input'], input[type='file']");
     await fileInput.setInputFiles(KLOG_FIXTURE);
-    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/parsed successfully/i")).toBeVisible({ timeout: 5_000 });
 
     // Parse warnings are conditional on the file's content — the test name
     // ("when present") signals this is a structure check, not a presence

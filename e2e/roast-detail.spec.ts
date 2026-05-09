@@ -121,7 +121,7 @@ test.describe("Roast Detail delete", () => {
     await page.locator("button:has-text('Confirm'), button:has-text('Yes'), button:has-text('Delete')").last().click();
 
     // Should redirect to dashboard
-    await expect(page).toHaveURL("/", { timeout: 10_000 });
+    await expect(page).toHaveURL("/", { timeout: 5_000 });
     await waitForDashboard(page);
   });
 });

@@ -59,8 +59,8 @@ test.describe("Bean Library auth variants", () => {
     const myBeanCount = await page.locator("[data-testid='bean-card']").count();
     // Click community browse
     await page.locator("button:has-text('Community'), button:has-text('Browse')").first().click();
-    await expect(page.locator("text=/bean library/i")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("text=/bean library/i")).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
     // Should show more beans than My Beans (seed has 8 beans across 3 users)
     const communityBeanCount = await page.locator("[data-testid='bean-card']").count();
     expect(communityBeanCount).toBeGreaterThanOrEqual(myBeanCount);
@@ -69,7 +69,7 @@ test.describe("Bean Library auth variants", () => {
   test("logged-out user sees all beans (community view) with no Add button", async ({ page }) => {
     await page.goto("/beans");
     // Should see beans without auth
-    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
     // No Add Bean button
     await expect(page.locator("button:has-text('Add Bean')")).not.toBeVisible();
   });
