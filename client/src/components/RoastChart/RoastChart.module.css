@@ -47,7 +47,8 @@
 }
 
 .toggleBtnActive {
-  color: #fff;
+  /* Dark text on bright dataset bg in dark mode; white on darker bg in light. */
+  color: var(--color-text-inverse);
 }
 
 .controls {

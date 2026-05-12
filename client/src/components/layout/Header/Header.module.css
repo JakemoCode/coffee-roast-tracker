@@ -11,7 +11,7 @@
   font-family: var(--font-heading);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: #faf7f2;
+  color: var(--color-on-header);
   text-decoration: none;
   flex-shrink: 0;
 }
@@ -24,7 +24,7 @@
 }
 
 .navLink {
-  color: rgba(250, 247, 242, 0.7);
+  color: var(--color-on-header-muted);
   text-decoration: none;
   font-family: var(--font-heading);
   font-size: var(--text-sm);
@@ -38,17 +38,17 @@
 }
 
 .navLink:hover {
-  color: #faf7f2;
+  color: var(--color-on-header);
 }
 
 .navLinkActive {
-  color: #faf7f2;
+  color: var(--color-on-header);
   border-bottom-color: var(--color-accent-caramel);
 }
 
 .uploadButton {
   background: var(--color-action);
-  color: #faf7f2;
+  color: var(--color-text-inverse);
   border: none;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
@@ -79,7 +79,7 @@
   display: none;
   background: none;
   border: none;
-  color: #faf7f2;
+  color: var(--color-on-header);
   font-size: var(--text-xl);
   cursor: pointer;
   padding: var(--space-2);

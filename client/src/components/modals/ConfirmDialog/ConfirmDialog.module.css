@@ -52,5 +52,5 @@
 }
 
 .danger:hover {
-  background: #a33d30;
+  background: var(--color-error-hover);
 }

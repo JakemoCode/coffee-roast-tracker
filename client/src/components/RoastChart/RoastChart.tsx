@@ -6,6 +6,7 @@ import type { AnnotationOptions } from "chartjs-plugin-annotation";
 import { celsiusToFahrenheit } from "../../lib/tempConversion";
 import { formatDuration } from "../../lib/formatters";
 import type { TempUnit } from "../../lib/formatters";
+import { useTheme } from "../../providers/ThemeContext";
 import styles from "./RoastChart.module.css";
 
 interface TimeSeriesEntry {
@@ -44,8 +45,6 @@ interface RoastChartProps {
   compareRoasts?: CompareRoast[];
 }
 
-const COMPARE_COLORS = ["#c27a8a", "#5a7247", "#c4862a", "#7a4a6e"];
-
 type PhaseZoom = "all" | "dry" | "maillard" | "dev";
 
 type DatasetKey = "meanTemp" | "profileTemp" | "ror" | "fanRPM" | "powerKW" | "spotTemp" | "desiredROR";
@@ -53,25 +52,66 @@ type DatasetKey = "meanTemp" | "profileTemp" | "ror" | "fanRPM" | "powerKW" | "s
 interface DatasetConfigItem {
   readonly key: DatasetKey;
   readonly label: string;
-  readonly color: string;
   readonly defaultOn: boolean;
   readonly dashed?: boolean;
   readonly tooltip?: string;
 }
 
-const DATASET_CONFIG: readonly DatasetConfigItem[] = [
-  { key: "meanTemp", label: "Mean Temp", color: "#2563eb", defaultOn: true },
-  { key: "profileTemp", label: "Profile Target", color: "#6b7280", defaultOn: true, dashed: true, tooltip: "The roast profile\u2019s target temperature curve \u2014 the setpoint the roaster follows, not a measured bean temp" },
-  { key: "fanRPM", label: "Fan RPM", color: "#0d7a54", defaultOn: true },
-  { key: "powerKW", label: "Power kW", color: "#8a5a00", defaultOn: true },
-  { key: "ror", label: "RoR", color: "#dc2626", defaultOn: true },
-  { key: "spotTemp", label: "Spot Temp", color: "#6d28d9", defaultOn: false },
-  { key: "desiredROR", label: "Desired RoR", color: "#be185d", defaultOn: false },
+const DATASET_META: readonly DatasetConfigItem[] = [
+  { key: "meanTemp", label: "Mean Temp", defaultOn: true },
+  { key: "profileTemp", label: "Profile Target", defaultOn: true, dashed: true, tooltip: "The roast profile\u2019s target temperature curve \u2014 the setpoint the roaster follows, not a measured bean temp" },
+  { key: "fanRPM", label: "Fan RPM", defaultOn: true },
+  { key: "powerKW", label: "Power kW", defaultOn: true },
+  { key: "ror", label: "RoR", defaultOn: true },
+  { key: "spotTemp", label: "Spot Temp", defaultOn: false },
+  { key: "desiredROR", label: "Desired RoR", defaultOn: false },
 ];
 
-const DATASET_COLOR: Record<DatasetKey, string> = Object.fromEntries(
-  DATASET_CONFIG.map((cfg) => [cfg.key, cfg.color]),
-) as Record<DatasetKey, string>;
+// Light palette: saturated, dark-leaning hexes for legibility on cream bg.
+// Dark palette: brighter 400-level shades that pop on espresso bg while
+// preserving distinguishability between series.
+const DATASET_PALETTE = {
+  light: {
+    meanTemp: "#2563eb",
+    profileTemp: "#6b7280",
+    fanRPM: "#0d7a54",
+    powerKW: "#8a5a00",
+    ror: "#dc2626",
+    spotTemp: "#6d28d9",
+    desiredROR: "#be185d",
+  },
+  dark: {
+    meanTemp: "#60a5fa",
+    profileTemp: "#9ca3af",
+    fanRPM: "#4ade80",
+    powerKW: "#fbbf24",
+    ror: "#f87171",
+    spotTemp: "#a78bfa",
+    desiredROR: "#f472b6",
+  },
+} as const satisfies Record<"light" | "dark", Record<DatasetKey, string>>;
+
+const MARKER_PALETTE = {
+  light: { colourChange: "#c9a84c", firstCrack: "#ef4444", roastEnd: "#5a3e2b" },
+  dark:  { colourChange: "#e8c46a", firstCrack: "#fca5a5", roastEnd: "#d4a574" },
+} as const;
+
+const COMPARE_PALETTE = {
+  light: ["#c27a8a", "#5a7247", "#c4862a", "#7a4a6e"],
+  dark:  ["#e0a8b8", "#93b87a", "#e8b860", "#c79bc0"],
+} as const;
+
+// Chart.js axis text + grid colors per theme. Hardcoded because reading
+// CSS vars via getComputedStyle is unreliable in jsdom tests.
+const CHART_CHROME = {
+  light: { text: "#1a1a1a", textMuted: "#6b6560", grid: "rgba(0, 0, 0, 0.1)" },
+  dark:  { text: "#ede6dd", textMuted: "#c1b8ac", grid: "rgba(255, 255, 255, 0.08)" },
+} as const;
+
+const ZONE_BAND_COLOR_BY_THEME = {
+  light: "rgba(34, 197, 94, 0.15)",
+  dark:  "rgba(74, 222, 128, 0.18)",
+} as const;
 
 function colorWithAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -81,7 +121,6 @@ function colorWithAlpha(hex: string, alpha: number): string {
 }
 
 const ZONE_OFFSET: Record<number, number> = { 1: 5, 2: 10, 3: 15 };
-const ZONE_BAND_COLOR = "rgba(34, 197, 94, 0.15)";
 
 const PHASE_PADDING = 12; // seconds
 
@@ -125,9 +164,16 @@ function RoastChart({
   tempUnit = "CELSIUS",
   compareRoasts = [],
 }: RoastChartProps) {
+  const { theme } = useTheme();
+  const DATASET_COLOR = DATASET_PALETTE[theme];
+  const MARKER_COLOR = MARKER_PALETTE[theme];
+  const COMPARE_COLORS = COMPARE_PALETTE[theme];
+  const ZONE_BAND_COLOR = ZONE_BAND_COLOR_BY_THEME[theme];
+  const chrome = CHART_CHROME[theme];
+
   const [activeToggles, setActiveToggles] = useState<Set<DatasetKey>>(() => {
     const defaults = new Set<DatasetKey>();
-    for (const cfg of DATASET_CONFIG) {
+    for (const cfg of DATASET_META) {
       if (cfg.defaultOn) defaults.add(cfg.key);
     }
     return defaults;
@@ -333,7 +379,7 @@ function RoastChart({
     }
 
     return result;
-  }, [timeSeriesData, activeToggles, zoneBoosts, tempUnit, compareRoasts]);
+  }, [timeSeriesData, activeToggles, zoneBoosts, tempUnit, compareRoasts, theme]);
 
   const xBounds = useMemo(() => {
     switch (phaseZoom) {
@@ -362,9 +408,9 @@ function RoastChart({
     const result: Record<string, AnnotationOptions> = {};
 
     const markers: Array<{ key: string; time: number | undefined; label: string; color: string }> = [
-      { key: "colourChange", time: colourChangeTime, label: "DE", color: "#c9a84c" },
-      { key: "firstCrack", time: firstCrackTime, label: "FC", color: "#ef4444" },
-      { key: "roastEnd", time: roastEndTime, label: "End", color: "#5a3e2b" },
+      { key: "colourChange", time: colourChangeTime, label: "DE", color: MARKER_COLOR.colourChange },
+      { key: "firstCrack", time: firstCrackTime, label: "FC", color: MARKER_COLOR.firstCrack },
+      { key: "roastEnd", time: roastEndTime, label: "End", color: MARKER_COLOR.roastEnd },
     ];
 
     // Stagger labels when markers are close together to avoid overlap
@@ -408,7 +454,7 @@ function RoastChart({
     }
 
     return result;
-  }, [colourChangeTime, firstCrackTime, roastEndTime]);
+  }, [colourChangeTime, firstCrackTime, roastEndTime, theme]);
 
   const hasRor = activeToggles.has("ror") || activeToggles.has("desiredROR");
   const hasFan = activeToggles.has("fanRPM");
@@ -444,33 +490,22 @@ function RoastChart({
           type: "linear" as const,
           min: xBounds.min,
           max: xBounds.max,
-          grid: {
-            display: showGrid,
-          },
+          grid: { display: showGrid, color: chrome.grid },
           ticks: {
+            color: chrome.textMuted,
             stepSize: xGridInterval ?? undefined,
             callback(value) {
               return formatDuration(value as number);
             },
           },
-          title: {
-            display: true,
-            text: "Time",
-          },
+          title: { display: true, text: "Time", color: chrome.text },
         },
         y: {
           type: "linear" as const,
           position: "left" as const,
-          grid: {
-            display: showGrid,
-          },
-          ticks: {
-            stepSize: yGridInterval ?? undefined,
-          },
-          title: {
-            display: true,
-            text: tempLabel,
-          },
+          grid: { display: showGrid, color: chrome.grid },
+          ticks: { color: chrome.textMuted, stepSize: yGridInterval ?? undefined },
+          title: { display: true, text: tempLabel, color: chrome.text },
         },
         ...(hasRor
           ? {
@@ -507,7 +542,7 @@ function RoastChart({
           : {}),
       },
     }),
-    [annotations, xBounds, hasRor, hasFan, hasPower, showGrid, tempLabel, xGridInterval, yGridInterval, compareRoasts.length],
+    [annotations, xBounds, hasRor, hasFan, hasPower, showGrid, tempLabel, xGridInterval, yGridInterval, compareRoasts.length, theme],
   );
 
   const chartData: ChartData<"line"> = useMemo(
@@ -522,8 +557,9 @@ function RoastChart({
     <div className={styles.container} data-testid="roast-chart">
       <div className={styles.toolbar}>
         <div className={styles.toggleGroup} role="group" aria-label="Dataset toggles">
-          {DATASET_CONFIG.map(({ key, label, color, tooltip }) => {
+          {DATASET_META.map(({ key, label, tooltip }) => {
             const active = activeToggles.has(key);
+            const color = DATASET_COLOR[key];
             return (
               <button
                 key={key}

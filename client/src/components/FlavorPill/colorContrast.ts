@@ -80,16 +80,52 @@ export function contrastRatio(fg: Rgb, bg: Rgb): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-export function readableTextColor(hex: string, minRatio = 4.5): string {
+// Compose a foreground hex with `alpha` over a `bg` hex (sRGB blend).
+// Used to approximate the *effective* pill bg color, since pills draw
+// rgba(color, 0.15) on top of the page bg.
+function composite(fgHex: string, alpha: number, bgHex: string): Rgb {
+  const [fr, fg, fb] = parseHex(fgHex);
+  const [br, bg, bb] = parseHex(bgHex);
+  return [
+    Math.round(fr * alpha + br * (1 - alpha)),
+    Math.round(fg * alpha + bg * (1 - alpha)),
+    Math.round(fb * alpha + bb * (1 - alpha)),
+  ];
+}
+
+interface ReadableTextOptions {
+  /** Page background hex. Defaults to white. */
+  bg?: string;
+  /** Alpha of the foreground color over the page bg (0..1). When set,
+   *  contrast is computed against the composited effective bg. */
+  bgAlpha?: number;
+  minRatio?: number;
+}
+
+// Find a text color derived from `hex` that reads on the (optionally
+// composited) background. In light mode we darken the source color;
+// in dark mode we lighten it — so the pill text always reads.
+export function readableTextColor(hex: string, opts: ReadableTextOptions = {}): string {
+  const { bg = "#ffffff", bgAlpha, minRatio = 4.5 } = opts;
   const [r, g, b] = parseHex(hex);
-  const bg: Rgb = [255, 255, 255];
-  if (contrastRatio([r, g, b], bg) >= minRatio) return hex;
+  const effectiveBg: Rgb = bgAlpha != null
+    ? composite(hex, bgAlpha, bg)
+    : parseHex(bg);
+  if (contrastRatio([r, g, b], effectiveBg) >= minRatio) return hex;
+
   const [h, s] = rgbToHsl(r, g, b);
-  for (let l = 0.45; l >= 0.1; l -= 0.05) {
+  const bgLum = relativeLuminance(...effectiveBg);
+  // Walk lightness toward the contrasting end of the scale.
+  const lightening = bgLum < 0.5;
+  const start = lightening ? 0.55 : 0.45;
+  const end = lightening ? 0.95 : 0.10;
+  const step = lightening ? 0.05 : -0.05;
+
+  for (let l = start; lightening ? l <= end : l >= end; l += step) {
     const rgb = hslToRgb(h, s, l);
-    if (contrastRatio(rgb, bg) >= minRatio) {
+    if (contrastRatio(rgb, effectiveBg) >= minRatio) {
       return `#${rgb.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
     }
   }
-  return "#1a1a1a";
+  return lightening ? "#ede6dd" : "#1a1a1a";
 }
