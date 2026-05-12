@@ -30,7 +30,12 @@ const lightTokens = parseTokens("tokens.css");
 const darkTokens = { ...lightTokens, ...parseTokens("dark.css") };
 
 function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    // Tokens resolving to var(...) or shorthand hex would NaN through the
+    // luminance math and produce an opaque assertion failure. Bail loudly.
+    throw new Error(`contrast test needs a 6-digit hex literal, got: "${hex}"`);
+  }
+  const h = hex.slice(1);
   return [
     parseInt(h.slice(0, 2), 16),
     parseInt(h.slice(2, 4), 16),

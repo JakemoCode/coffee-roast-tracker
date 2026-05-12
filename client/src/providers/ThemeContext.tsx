@@ -54,9 +54,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 // Falls back to light mode + no-op toggle when no provider is present.
 // This lets isolated component tests render without wrapping in
 // ThemeProvider — theming is a leaf concern, not a structural one.
-// In real use AppProviders always wraps the tree.
+// In real use AppProviders always wraps the tree; a dev-only warn
+// surfaces the misconfig if it ever drifts.
 const FALLBACK: ThemeContextValue = { theme: "light", toggleTheme: () => {} };
 
 export function useTheme(): ThemeContextValue {
-  return useContext(ThemeContext) ?? FALLBACK;
+  const ctx = useContext(ThemeContext);
+  if (ctx === null && import.meta.env.DEV) {
+    console.warn(
+      "[useTheme] called outside ThemeProvider — falling back to light mode. Wrap the tree in AppProviders.",
+    );
+  }
+  return ctx ?? FALLBACK;
 }

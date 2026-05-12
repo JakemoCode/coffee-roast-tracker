@@ -67,9 +67,8 @@ const DATASET_META: readonly DatasetConfigItem[] = [
   { key: "desiredROR", label: "Desired RoR", defaultOn: false },
 ];
 
-// Light palette: saturated, dark-leaning hexes for legibility on cream bg.
-// Dark palette: brighter 400-level shades that pop on espresso bg while
-// preserving distinguishability between series.
+// Per-theme dataset colors: darker saturated hexes for the cream bg,
+// brighter 400-level shades for the espresso bg.
 const DATASET_PALETTE = {
   light: {
     meanTemp: "#2563eb",
