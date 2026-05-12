@@ -84,7 +84,7 @@
   cursor: pointer;
   border: none;
   background: var(--color-action);
-  color: #faf7f2;
+  color: var(--color-text-inverse);
 }
 
 .saveAllBtn:disabled {

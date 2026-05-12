@@ -88,7 +88,7 @@
   background: var(--color-warning-muted);
   border-radius: var(--radius-md);
   font-size: var(--text-xs);
-  color: #a07020;
+  color: var(--color-warning-text);
 }
 
 .warningList {
@@ -115,7 +115,7 @@
 
 .noMatch {
   background: var(--color-warning-muted);
-  color: #a07020;
+  color: var(--color-warning-text);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -191,7 +191,7 @@
 
 .btnPrimary {
   background: var(--color-action);
-  color: #faf7f2;
+  color: var(--color-text-inverse);
 }
 
 .dropHint {

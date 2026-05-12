@@ -86,7 +86,7 @@
 
 .zoomBtnActive {
   background: var(--color-action);
-  color: #faf7f2;
+  color: var(--color-text-inverse);
   border-color: var(--color-action);
 }
 

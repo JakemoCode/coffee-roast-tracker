@@ -7,10 +7,14 @@
   --color-bg-overlay: rgba(0, 0, 0, 0.4);
 
   --color-header: #2c1810;
+  /* Header stays dark in both themes — these on-header tokens are reused
+     by dark.css and so live here. */
+  --color-on-header: #faf7f2;
+  --color-on-header-muted: rgba(250, 247, 242, 0.7);
 
   --color-text: #1a1a1a;
   --color-text-secondary: #6b6560;
-  --color-text-muted: #9e9790;
+  --color-text-muted: #736c64;
   --color-text-disabled: #c4bfb8;
   --color-text-inverse: #ffffff;
   --color-text-inverse-hover: rgba(255, 255, 255, 0.8);
@@ -34,10 +38,13 @@
 
   --color-success: #5a7247;
   --color-success-muted: rgba(90, 114, 71, 0.1);
-  --color-warning: #c4862a;
-  --color-warning-muted: rgba(196, 134, 42, 0.1);
+  --color-warning: #b07520;
+  --color-warning-muted: rgba(176, 117, 32, 0.1);
+  /* For text on --color-warning-muted bg (warning fill is too light for body text). */
+  --color-warning-text: #8a5a18;
   --color-error: #c44a3b;
   --color-error-muted: rgba(196, 74, 59, 0.1);
+  --color-error-hover: #a33d30;
   --color-info: #4a7a9b;
   --color-info-muted: rgba(74, 122, 155, 0.1);
 
