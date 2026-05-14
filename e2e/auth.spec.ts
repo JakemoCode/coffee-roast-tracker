@@ -92,9 +92,11 @@ test.describe("Protected routes (auth required)", () => {
     await expect(page.locator("nav >> text='My Roasts'")).toBeVisible();
   });
 
-  test("logged-out header shows Sign In button but not Upload or My Roasts", async ({ page }) => {
+  test("logged-out header shows Sign In button but not Beans, Upload, or My Roasts", async ({ page }) => {
     await page.goto("/beans"); // Public page with header
     await expect(page.locator("text=/sign in/i").first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator("button:text('Upload')")).not.toBeVisible();
+    await expect(page.locator("nav >> text='Beans'")).not.toBeVisible();
+    await expect(page.locator("nav >> text='My Roasts'")).not.toBeVisible();
   });
 });
