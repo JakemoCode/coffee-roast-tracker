@@ -86,12 +86,6 @@ test.describe("Journey: add bean then upload", () => {
     await page.fill("input[placeholder*='Yirgacheffe' i]", "Oaxaca, Mexico");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
-    // Combobox autocomplete is best-effort — typed value is also accepted
-    // by Save, so a missing dropdown option is not a test failure.
-    const option = page.locator("[role='option']:text-is('Natural')");
-    if (await option.isVisible({ timeout: 2_000 })) {
-      await option.click();
-    }
     await page.fill("input[aria-describedby='short-name-help']", "Journey");
     await page.click("button:text('Save')");
     await page.waitForTimeout(2_000);

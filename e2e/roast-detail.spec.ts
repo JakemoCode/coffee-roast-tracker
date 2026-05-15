@@ -154,15 +154,14 @@ test.describe("Roast Detail other roasts table", () => {
     await waitForRoastDetail(page);
 
     // Roast Detail compare is an inline overlay on the chart, not a button.
-    // The current roast's row has no checkbox; siblings do. Toggling a
-    // sibling's checkbox flips data-compared on its row and overlays its
-    // time series on the chart.
-    const sibling = page.locator('[data-testid="metrics-row"][data-current="false"]').first();
-    await expect(sibling).toHaveAttribute("data-compared", "false");
+    // The current roast's row has no checkbox; sibling rows have one labelled
+    // "Compare with <date>". Toggling overlays its curve on the chart.
+    const compareCheckbox = page.getByRole("checkbox", { name: /compare with/i }).first();
+    await expect(compareCheckbox).not.toBeChecked();
 
-    await sibling.locator('input[type="checkbox"]').check();
+    await compareCheckbox.check();
 
-    await expect(sibling).toHaveAttribute("data-compared", "true", { timeout: 3_000 });
+    await expect(compareCheckbox).toBeChecked({ timeout: 3_000 });
   });
 });
 

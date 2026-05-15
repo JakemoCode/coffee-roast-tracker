@@ -106,12 +106,6 @@ test.describe("Add Bean flow", () => {
     await page.fill("input[placeholder*='Yirgacheffe' i]", "Minas Gerais, Brazil");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
-    // Combobox autocomplete is best-effort — typed value is also accepted
-    // by Save, so a missing dropdown option is not a test failure.
-    const option = page.locator("[role='option']:text-is('Natural')");
-    if (await option.isVisible({ timeout: 2_000 })) {
-      await option.click();
-    }
     await page.fill("input[aria-describedby='short-name-help']", "BrSantos");
 
     await page.click("button:text('Save')");
@@ -131,11 +125,6 @@ test.describe("Add Bean flow", () => {
     await page.fill("input[placeholder*='origin' i], input[placeholder*='Huila']", "Costa Rica");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Honey");
-    // Combobox autocomplete is best-effort; typed value is accepted on Save.
-    const option = page.locator("[role='option']:text-is('Honey')");
-    if (await option.isVisible({ timeout: 2_000 })) {
-      await option.click();
-    }
 
     // Supplier Notes textarea — one field now serves both as bagNotes
     // and as the parse input (consolidation in AddBeanModal)
