@@ -37,16 +37,16 @@ export function Header({
       </Link>
 
       <nav className={styles.nav}>
-        <NavLink
-          to="/beans"
-          className={({ isActive }) =>
-            `${styles.navLink} ${isActive ? styles.navLinkActive : ""}`
-          }
-        >
-          Beans
-        </NavLink>
         {isAuthenticated && (
           <>
+            <NavLink
+              to="/beans"
+              className={({ isActive }) =>
+                `${styles.navLink} ${isActive ? styles.navLinkActive : ""}`
+              }
+            >
+              Beans
+            </NavLink>
             <NavLink
               to="/"
               end

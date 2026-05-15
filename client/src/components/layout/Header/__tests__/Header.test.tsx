@@ -32,21 +32,17 @@ describe("Header", () => {
     expect(logo.closest("a")).toHaveAttribute("href", "/");
   });
 
-  it("always shows the Beans link", () => {
-    renderHeader();
-    const beansLink = screen.getByRole("link", { name: "Beans" });
-    expect(beansLink).toBeInTheDocument();
-    expect(beansLink).toHaveAttribute("href", "/beans");
-  });
-
-  it("shows My Roasts and Upload when authenticated", () => {
+  it("shows Beans, My Roasts, and Upload when authenticated", () => {
     renderHeader({ isAuthenticated: true });
+    const beansLink = screen.getByRole("link", { name: "Beans" });
+    expect(beansLink).toHaveAttribute("href", "/beans");
     expect(screen.getByRole("link", { name: "My Roasts" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument();
   });
 
-  it("hides My Roasts and Upload when not authenticated", () => {
+  it("hides Beans, My Roasts, and Upload when not authenticated", () => {
     renderHeader({ isAuthenticated: false });
+    expect(screen.queryByRole("link", { name: "Beans" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "My Roasts" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
   });
