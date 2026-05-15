@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useFragment } from "@apollo/client/react";
 import { graphql } from "../../../graphql/graphql";
 import type { FragmentOf } from "../../../graphql/graphql";
@@ -6,6 +6,7 @@ import { StarRating } from "../../StarRating";
 import { Pagination } from "./Pagination";
 import { formatDuration, formatTemp, formatDate } from "../../../lib/formatters";
 import type { TempUnit } from "../../../lib/formatters";
+import { useSortableList } from "../../../lib/useSortableList";
 import styles from "./RoastsTable.module.css";
 
 export const ROAST_ROW_FIELDS = graphql(`
@@ -40,25 +41,18 @@ interface RoastsTableProps {
 }
 
 type SortField = "beanName" | "roastDate" | "rating" | "totalDuration" | "firstCrackTemp" | "developmentPercent";
-type SortDir = "asc" | "desc";
 
-function getSortValue(roast: RoastRow, field: SortField): string | number | null | undefined {
-  if (field === "beanName") return roast.bean.name;
-  return roast[field];
-}
+const SORT_BY: Record<SortField, (r: RoastRow) => string | number | null> = {
+  beanName: (r) => r.bean.name,
+  roastDate: (r) => r.roastDate,
+  rating: (r) => r.rating,
+  totalDuration: (r) => r.totalDuration,
+  firstCrackTemp: (r) => r.firstCrackTemp,
+  developmentPercent: (r) => r.developmentPercent,
+};
 
-function compareValues(a: unknown, b: unknown, dir: SortDir): number {
-  if (a == null && b == null) return 0;
-  if (a == null) return 1;
-  if (b == null) return -1;
-
-  let cmp: number;
-  if (typeof a === "string" && typeof b === "string") {
-    cmp = a.localeCompare(b);
-  } else {
-    cmp = (a as number) - (b as number);
-  }
-  return dir === "asc" ? cmp : -cmp;
+function searchPredicate(r: RoastRow, q: string): boolean {
+  return r.bean.name.toLowerCase().includes(q.toLowerCase());
 }
 
 interface RoastTableRowProps {
@@ -148,41 +142,42 @@ export function RoastsTable({
   tempUnit = "CELSIUS",
   hideBeanName = false,
 }: RoastsTableProps) {
-  const [search, setSearch] = useState("");
   const [beanFilter, setBeanFilter] = useState("");
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filtered = useMemo(() => {
-    let result = roasts;
-
-    if (searchable && search) {
-      const q = search.toLowerCase();
-      result = result.filter((r) => r.bean.name.toLowerCase().includes(q));
-    }
-
-    if (filterable && beanFilter) {
-      result = result.filter((r) => {
-        const matchingBean = beans?.find((b) => b.id === beanFilter);
-        return matchingBean ? r.bean.name === matchingBean.name : r.bean.name === beanFilter;
-      });
-    }
-
-    return result;
-  }, [roasts, search, beanFilter, searchable, filterable, beans]);
-
-  const sorted = useMemo(() => {
-    if (!sortable || !sortField) return filtered;
-    return [...filtered].sort((a, b) =>
-      compareValues(getSortValue(a, sortField), getSortValue(b, sortField), sortDir),
+  // Apply the bean-id filter first; the hook then runs search + sort over
+  // whatever survives. Bean filter stays here because useSortableList's
+  // search predicate doesn't know about external dropdown state.
+  const beanFiltered = useMemo(() => {
+    if (!filterable || !beanFilter) return roasts;
+    const matchingBean = beans?.find((b) => b.id === beanFilter);
+    return roasts.filter((r) =>
+      matchingBean ? r.bean.name === matchingBean.name : r.bean.name === beanFilter,
     );
-  }, [filtered, sortField, sortDir, sortable]);
+  }, [roasts, beanFilter, filterable, beans]);
+
+  const {
+    rows: sorted,
+    search,
+    setSearch,
+    sortField,
+    sortDir,
+    handleSort: handleSortHook,
+  } = useSortableList<RoastRow, SortField>({
+    items: beanFiltered,
+    searchPredicate,
+    sortBy: SORT_BY,
+  });
+
+  // Pagination is a RoastsTable-only concern. Reset to page 1 whenever
+  // the visible set could shift (search, sort, or bean filter changed).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortField, sortDir, beanFilter]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-
   const paged = useMemo(() => {
     const start = (safePage - 1) * pageSize;
     return sorted.slice(start, start + pageSize);
@@ -190,13 +185,7 @@ export function RoastsTable({
 
   function handleSort(field: SortField) {
     if (!sortable) return;
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
-    setCurrentPage(1);
+    handleSortHook(field);
   }
 
   function toggleSelect(id: string) {
@@ -214,23 +203,13 @@ export function RoastsTable({
   const atLimit = selected.size >= maxSelections;
 
   function sortIndicator(field: SortField) {
-    if (!sortable) return null;
-    if (sortField !== field) return null;
+    if (!sortable || sortField !== field) return null;
     return sortDir === "asc" ? " ▲" : " ▼";
   }
 
-  function handlePageChange(page: number) {
-    setCurrentPage(page);
-  }
-
   function handleSearchChange(value: string) {
+    if (!searchable) return;
     setSearch(value);
-    setCurrentPage(1);
-  }
-
-  function handleBeanFilterChange(value: string) {
-    setBeanFilter(value);
-    setCurrentPage(1);
   }
 
   return (
@@ -324,7 +303,7 @@ export function RoastsTable({
         <Pagination
           currentPage={safePage}
           totalPages={totalPages}
-          onPageChange={handlePageChange}
+          onPageChange={setCurrentPage}
         />
       )}
 
@@ -344,7 +323,7 @@ export function RoastsTable({
             <select
               className={styles.beanFilter}
               value={beanFilter}
-              onChange={(e) => handleBeanFilterChange(e.target.value)}
+              onChange={(e) => setBeanFilter(e.target.value)}
               data-testid="bean-filter"
               aria-label="Filter by bean"
             >

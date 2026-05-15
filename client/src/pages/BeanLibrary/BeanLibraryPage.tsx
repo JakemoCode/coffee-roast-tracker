@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useAuthState } from "../../lib/useAuthState";
 import { useNavigate } from "react-router-dom";
+import { useSortableList } from "../../lib/useSortableList";
 import {
   MY_BEANS_QUERY,
   MY_ROASTS_QUERY,
@@ -60,7 +61,34 @@ function computeAggregations(roasts: MyRoastResult[]): Map<string, BeanAggregati
 }
 
 type SortField = "name" | "origin" | "process" | "variety" | "roastCount" | "avgRating";
-type SortDir = "asc" | "desc";
+
+interface BeanRow {
+  id: string;
+  name: string;
+  origin: string | undefined;
+  process: string | undefined;
+  variety: string | undefined;
+  roastCount: number | undefined;
+  avgRating: number | undefined;
+}
+
+const BEAN_SORT_BY: Record<SortField, (b: BeanRow) => string | number | null | undefined> = {
+  name: (b) => b.name,
+  origin: (b) => b.origin,
+  process: (b) => b.process,
+  variety: (b) => b.variety,
+  roastCount: (b) => b.roastCount,
+  avgRating: (b) => b.avgRating,
+};
+
+function beanSearchPredicate(b: BeanRow, q: string): boolean {
+  const lower = q.toLowerCase();
+  return (
+    b.name.toLowerCase().includes(lower) ||
+    (b.origin?.toLowerCase().includes(lower) ?? false) ||
+    (b.process?.toLowerCase().includes(lower) ?? false)
+  );
+}
 
 export function BeanLibraryPage() {
   const { isSignedIn } = useAuthState();
@@ -69,9 +97,6 @@ export function BeanLibraryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("card");
   const [browseMode, setBrowseMode] = useState<BrowseMode>("my");
   const [showAddBean, setShowAddBean] = useState(false);
-  const [tableSearch, setTableSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const showCommunity = !isSignedIn || browseMode === "community";
 
@@ -131,77 +156,34 @@ export function BeanLibraryPage() {
     };
   });
 
-  const publicBeanCards = publicBeans.map((b) => ({
+  const publicBeanCards: BeanRow[] = publicBeans.map((b) => ({
     id: b.id,
     name: b.name,
     origin: b.origin ?? undefined,
     process: b.process ?? undefined,
     variety: b.variety ?? undefined,
-    roastCount: undefined as number | undefined,
-    avgRating: undefined as number | undefined,
+    roastCount: undefined,
+    avgRating: undefined,
   }));
 
-  const beanCards = showCommunity ? publicBeanCards : myBeanCards;
+  const beanCards: BeanRow[] = showCommunity ? publicBeanCards : myBeanCards;
 
-  // Table view data with search and sort
-  const tableRows = beanCards
-    .filter((b) => {
-      if (!tableSearch) return true;
-      const q = tableSearch.toLowerCase();
-      return (
-        b.name.toLowerCase().includes(q) ||
-        (b.origin?.toLowerCase().includes(q) ?? false) ||
-        (b.process?.toLowerCase().includes(q) ?? false)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortField) return 0;
-      let aVal: string | number | null | undefined;
-      let bVal: string | number | null | undefined;
-      switch (sortField) {
-        case "name":
-          aVal = a.name;
-          bVal = b.name;
-          break;
-        case "origin":
-          aVal = a.origin;
-          bVal = b.origin;
-          break;
-        case "process":
-          aVal = a.process;
-          bVal = b.process;
-          break;
-        case "variety":
-          aVal = a.variety;
-          bVal = b.variety;
-          break;
-        case "roastCount":
-          aVal = a.roastCount;
-          bVal = b.roastCount;
-          break;
-        case "avgRating":
-          aVal = a.avgRating;
-          bVal = b.avgRating;
-          break;
-      }
-      if (aVal == null && bVal == null) return 0;
-      if (aVal == null) return 1;
-      if (bVal == null) return -1;
-      const cmp =
-        typeof aVal === "string" && typeof bVal === "string"
-          ? aVal.localeCompare(bVal)
-          : (aVal as number) - (bVal as number);
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-
-  function handleSort(field: SortField) {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(field);
-      setSortDir("asc");
-    }
-  }
+  // Table view: search + sort state owned by useSortableList. Indicator
+  // glyph is rendered locally so this table can keep its \u2195 for inactive
+  // columns (RoastsTable shows nothing for inactive \u2014 different product
+  // decision, kept distinct by design).
+  const {
+    rows: tableRows,
+    search: tableSearch,
+    setSearch: setTableSearch,
+    sortField,
+    sortDir,
+    handleSort,
+  } = useSortableList<BeanRow, SortField>({
+    items: beanCards,
+    searchPredicate: beanSearchPredicate,
+    sortBy: BEAN_SORT_BY,
+  });
 
   function sortIndicator(field: SortField) {
     if (sortField !== field) return " \u2195";
