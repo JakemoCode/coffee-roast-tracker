@@ -11,6 +11,36 @@ Add domain terms here as they crystallise.)
 
 ## Client architecture concepts
 
+### Flavor descriptor catalogue
+
+The set of named flavors the app knows about (Jasmine, Blueberry, Dark
+Chocolate, ...), each with a category and a display color. Seeded from
+the SCA 2016 flavor wheel plus any user-added custom descriptors.
+Used everywhere flavors are rendered, filtered, or matched.
+
+Owned by the **`useFlavorDescriptors`** hook at
+`client/src/lib/useFlavorDescriptors.ts`.
+
+- **Scope**: fetch the catalogue once per render tree, expose both
+  iteration shape (`descriptors`) and lookup shape (`colorMap`).
+- **Off-flavors**: the catalogue separates regular flavors and off-flavors
+  (defects). Most callers want both; `RoastDetailPage` wants them split
+  so it can render two separate pickers. Hook takes an optional
+  `isOffFlavor?: boolean` to filter.
+- **Network shape**: callers should NEVER issue `FLAVOR_DESCRIPTORS_QUERY`
+  directly. The hook is the single seam; Apollo's cache deduplicates
+  parallel callers under it.
+
+Adapters today:
+
+- `client/src/components/layout/AppLayout/AppLayout.tsx` — passes
+  descriptors to UploadModal/AddBeanModal for the flavor-parse widget.
+- `client/src/pages/BeanDetail/BeanDetailPage.tsx` — feeds `useFlavorParser`.
+- `client/src/pages/BeanLibrary/BeanLibraryPage.tsx` — filter UI.
+- `client/src/pages/RoastDetail/RoastDetailPage.tsx` — calls twice with
+  `isOffFlavor: false` / `true` for the picker modals.
+- `client/src/components/BeanCard/BeanCard.tsx` — color lookup only.
+
 ### Flavor parse widget
 
 A user-driven flow where free-text supplier or cupping notes are sent to

@@ -220,15 +220,6 @@ export const PREVIEW_ROAST_LOGS = graphql(`
   }
 `);
 
-export const FLAVOR_DESCRIPTORS_QUERY = graphql(`
-  query FlavorDescriptors($isOffFlavor: Boolean) {
-    flavorDescriptors(isOffFlavor: $isOffFlavor) {
-      ...FlavorDescriptorFields
-      isCustom
-    }
-  }
-`, [FLAVOR_DESCRIPTOR_FIELDS]);
-
 export const PARSE_SUPPLIER_NOTES_QUERY = graphql(`
   query ParseSupplierNotes($text: String!) {
     parseSupplierNotes(text: $text) {
