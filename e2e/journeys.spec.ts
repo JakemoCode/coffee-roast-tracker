@@ -86,6 +86,8 @@ test.describe("Journey: add bean then upload", () => {
     await page.fill("input[placeholder*='Yirgacheffe' i]", "Oaxaca, Mexico");
     const processInput = page.locator("input[placeholder*='process' i], input[placeholder*='Washed']");
     await processInput.fill("Natural");
+    // Process is a non-allowCustom Combobox — value only commits on option click.
+    await page.locator("[role='option']:text-is('Natural')").click();
     await page.fill("input[aria-describedby='short-name-help']", "Journey");
     await page.click("button:text('Save')");
     await page.waitForTimeout(2_000);
