@@ -18,9 +18,11 @@ test.describe("Journey: logged-out browsing", () => {
     await page.goto("/");
     await expect(page.locator("text=/roasts? logged/i")).toBeVisible({ timeout: 5_000 });
 
-    // Step 2: Navigate to bean library
-    await page.click("nav >> text=/beans/i");
-    await expect(page).toHaveURL("/beans");
+    // Step 2: Navigate to bean library directly. Logged-out users have no
+    // header nav for /beans — only the popular-bean cards (which go to
+    // bean detail) and the sign-up CTA. The library itself is still
+    // reachable by URL.
+    await page.goto("/beans");
     await expect(page.locator("[data-testid='bean-card']").first()).toBeVisible({ timeout: 5_000 });
 
     // Step 3: Click a bean — Kenya AA has multiple public roasts in seed.

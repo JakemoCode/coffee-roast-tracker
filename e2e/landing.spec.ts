@@ -40,17 +40,12 @@ test.describe("Landing Page", () => {
     await expect(page.locator("text=/free/i").first()).toBeVisible();
   });
 
-  test("does NOT show Upload or My Roasts nav items to logged-out users", async ({ page }) => {
+  test("does NOT show Beans, Upload, or My Roasts nav items to logged-out users", async ({ page }) => {
     await page.goto("/");
     await waitForLanding(page);
     await expect(page.locator("button:text('Upload')")).not.toBeVisible();
     await expect(page.locator("nav >> text='My Roasts'")).not.toBeVisible();
-  });
-
-  test("shows Bean Library nav link for logged-out users", async ({ page }) => {
-    await page.goto("/");
-    await waitForLanding(page);
-    await expect(page.locator("nav >> text=/beans/i").first()).toBeVisible();
+    await expect(page.locator("nav >> text='Beans'")).not.toBeVisible();
   });
 });
 
@@ -59,13 +54,12 @@ test.describe("Landing Page", () => {
 // ════════════════════════════════════════════════════════════════════
 
 test.describe("Public browsing from landing", () => {
-  test("logged-out user can navigate to bean library and browse all beans", async ({ page }) => {
-    await page.goto("/");
-    await waitForLanding(page);
-    await page.click("nav >> text=/beans/i");
-    await expect(page).toHaveURL("/beans");
+  test("logged-out user can access the bean library directly and browse all beans", async ({ page }) => {
+    // No header nav for logged-out users — bean library is reached via
+    // direct URL (or a popular-bean card click on the landing page,
+    // covered in "clicking a popular bean navigates to its detail page").
+    await page.goto("/beans");
     await waitForBeanLibrary(page);
-    // Should see beans from all users (community view)
     const beanCards = page.locator("[data-testid='bean-card']");
     await expect(beanCards.first()).toBeVisible();
     const count = await beanCards.count();
