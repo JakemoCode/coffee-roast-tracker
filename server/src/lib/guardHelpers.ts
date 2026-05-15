@@ -30,3 +30,19 @@ export async function requireUserBean(prisma: PrismaClient, id: string, userId: 
   }
   return userBean;
 }
+
+export async function requireUserBeanByBeanId(
+  prisma: PrismaClient,
+  beanId: string,
+  userId: string,
+) {
+  const userBean = await prisma.userBean.findUnique({
+    where: { userId_beanId: { userId, beanId } },
+  });
+  if (!userBean) {
+    throw new GraphQLError("Bean not found in your library", {
+      extensions: { code: "NOT_FOUND" },
+    });
+  }
+  return userBean;
+}

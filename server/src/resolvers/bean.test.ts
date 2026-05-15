@@ -1020,3 +1020,92 @@ describe("bean resolvers — shortName", () => {
     expect(refetched!.score).toBe(90);
   });
 });
+
+// Bean-ownership guard: the three mutations that gate access to a bean
+// via the (userId, beanId) composite key. Audit found these had identical
+// inline checks and zero NOT_FOUND coverage. Helper at
+// guardHelpers.ts#requireUserBeanByBeanId owns the check now; these tests
+// lock in the seam.
+describe("bean resolvers — ownership guard (requireUserBeanByBeanId)", () => {
+  type ErrorBody = {
+    kind: "single";
+    singleResult: { errors?: { message: string; extensions?: { code?: string } }[] };
+  };
+
+  const UPDATE_BEAN_SUGGESTED_FLAVORS = `
+    mutation UpdateBeanSuggestedFlavors($beanId: String!, $suggestedFlavors: [String!]!) {
+      updateBeanSuggestedFlavors(beanId: $beanId, suggestedFlavors: $suggestedFlavors) {
+        id
+      }
+    }
+  `;
+  const REMOVE_BEAN = `
+    mutation RemoveBean($beanId: String!) {
+      removeBeanFromLibrary(beanId: $beanId)
+    }
+  `;
+
+  async function createOrphanBean(name: string) {
+    // Create a bean owned by user B; user A will try to mutate it.
+    const response = await server.executeOperation(
+      {
+        query: CREATE_BEAN,
+        variables: { input: { name, shortName: name.slice(0, 4) } },
+      },
+      { contextValue: { prisma, userId: testUserIdB } },
+    );
+    const body = response.body as {
+      kind: "single";
+      singleResult: { data: Record<string, unknown> | null };
+    };
+    const created = body.singleResult.data!.createBean as {
+      id: string;
+      bean: { id: string };
+    };
+    createdUserBeanIds.push(created.id);
+    createdBeanIds.push(created.bean.id);
+    return created.bean.id;
+  }
+
+  it("updateBean returns NOT_FOUND when caller doesn't own the bean", async () => {
+    const beanId = await createOrphanBean("Guard Test One Washed");
+    const response = await server.executeOperation(
+      {
+        query: UPDATE_BEAN,
+        variables: { id: beanId, input: { score: 80 } },
+      },
+      { contextValue: { prisma, userId: testUserId } },
+    );
+    const body = response.body as ErrorBody;
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toBe("Bean not found in your library");
+    expect(body.singleResult.errors![0]!.extensions!.code).toBe("NOT_FOUND");
+  });
+
+  it("updateBeanSuggestedFlavors returns NOT_FOUND when caller doesn't own the bean", async () => {
+    const beanId = await createOrphanBean("Guard Test Two Washed");
+    const response = await server.executeOperation(
+      {
+        query: UPDATE_BEAN_SUGGESTED_FLAVORS,
+        variables: { beanId, suggestedFlavors: ["citrus"] },
+      },
+      { contextValue: { prisma, userId: testUserId } },
+    );
+    const body = response.body as ErrorBody;
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toBe("Bean not found in your library");
+    expect(body.singleResult.errors![0]!.extensions!.code).toBe("NOT_FOUND");
+  });
+
+  it("removeBeanFromLibrary returns NOT_FOUND when caller doesn't own the bean", async () => {
+    const beanId = await createOrphanBean("Guard Test Three Washed");
+    const response = await server.executeOperation(
+      { query: REMOVE_BEAN, variables: { beanId } },
+      { contextValue: { prisma, userId: testUserId } },
+    );
+    const body = response.body as ErrorBody;
+    expect(body.singleResult.errors).toBeDefined();
+    expect(body.singleResult.errors![0]!.message).toBe("Bean not found in your library");
+    expect(body.singleResult.errors![0]!.extensions!.code).toBe("NOT_FOUND");
+  });
+});
