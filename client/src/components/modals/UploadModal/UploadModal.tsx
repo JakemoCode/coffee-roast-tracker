@@ -41,28 +41,27 @@ interface RoastPreview {
   existingRoastId?: string | null;
 }
 
+export type UploadCompleteResult =
+  | { mode: "single"; roastId: string; wasDuplicate: boolean }
+  | { mode: "batch"; savedCount: number; duplicateCount: number };
+
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPreview: (fileName: string, fileContent: string) => Promise<RoastPreview>;
-  onPreviewBatch?: (files: Array<{ fileName: string; fileContent: string }>) => Promise<
+  onPreviewFiles: (
+    files: Array<{ fileName: string; fileContent: string }>,
+  ) => Promise<
     Array<{
       fileName: string;
       preview: RoastPreview | null;
       error: string | null;
     }>
   >;
-  onSave: (
+  onUploadFile: (
     beanId: string,
     fileName: string,
     fileContent: string,
     notes?: string,
-  ) => Promise<{ roastId: string; wasDuplicate: boolean }>;
-  /** Save without navigation — used for batch mode */
-  onSaveBatch?: (
-    beanId: string,
-    fileName: string,
-    fileContent: string,
   ) => Promise<{ roastId: string; wasDuplicate: boolean }>;
   beans: Array<{ id: string; name: string }>;
   onCreateBean: (bean: {
@@ -73,21 +72,19 @@ interface UploadModalProps {
   }) => Promise<{ id: string; name: string }>;
   flavors?: Array<{ name: string; color: string }>;
   suppliers?: string[];
-  onBatchComplete?: () => void;
+  onComplete?: (result: UploadCompleteResult) => void;
 }
 
 export function UploadModal({
   isOpen,
   onClose,
-  onPreview,
-  onPreviewBatch,
-  onSave,
-  onSaveBatch,
+  onPreviewFiles,
+  onUploadFile,
   beans,
   onCreateBean,
   flavors,
   suppliers,
-  onBatchComplete,
+  onComplete,
 }: UploadModalProps) {
   const [step, setStep] = useState<"dropzone" | "preview">("dropzone");
   const [isDragging, setIsDragging] = useState(false);
@@ -142,7 +139,13 @@ export function UploadModal({
     setParsing(true);
 
     try {
-      const result = await onPreview(name, content);
+      const [entry] = await onPreviewFiles([
+        { fileName: name, fileContent: content },
+      ]);
+      if (!entry || entry.error || !entry.preview) {
+        throw new Error(entry?.error ?? "Failed to parse file");
+      }
+      const result = entry.preview;
       setPreview(result);
       // Auto-select priority: user library first, community catalog second
       const librarySuggestion = result.suggestedBeans[0];
@@ -213,35 +216,18 @@ export function UploadModal({
       ),
     );
 
-    // Parse all files in a single batch request
-    let results: Array<{
-      fileName: string;
-      preview: RoastPreview | null;
-      error: string | null;
-    }>;
-    if (onPreviewBatch) {
-      results = await onPreviewBatch(
+    let results;
+    try {
+      results = await onPreviewFiles(
         fileData.map(({ name, content }) => ({ fileName: name, fileContent: content })),
       );
-    } else {
-      // Fallback: sequential calls if batch endpoint not provided
-      results = [];
-      for (const { name, content } of fileData) {
-        try {
-          const preview = await onPreview(name, content);
-          results.push({
-            fileName: name,
-            preview,
-            error: null,
-          });
-        } catch (err) {
-          results.push({
-            fileName: name,
-            preview: null,
-            error: err instanceof Error ? err.message : "Failed to parse",
-          });
-        }
-      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to parse files";
+      setError(message);
+      setParsing(false);
+      setMode("single");
+      return;
     }
 
     const rows: BatchRow[] = results.map((r) => {
@@ -267,13 +253,16 @@ export function UploadModal({
     setBatchSaving(true);
     setBatchProgress({ current: 0, total: validIndices.length });
 
+    let savedCount = 0;
+    let duplicateCount = 0;
     for (let i = 0; i < validIndices.length; i++) {
       const rowIndex = validIndices[i]!;
       const row = batchRows[rowIndex]!;
       setBatchProgress({ current: i + 1, total: validIndices.length });
       try {
-        const saveFn = onSaveBatch ?? onSave;
-        const result = await saveFn(batchBeanId, row.fileName, row.fileContent);
+        const result = await onUploadFile(batchBeanId, row.fileName, row.fileContent);
+        savedCount += 1;
+        if (result.wasDuplicate || row.isDuplicate) duplicateCount += 1;
         setBatchRows((prev) =>
           prev.map((r, idx) =>
             idx === rowIndex
@@ -291,11 +280,8 @@ export function UploadModal({
 
     // All saved — reset before unmounting to avoid stale state setters
     reset();
-    if (onBatchComplete) {
-      onBatchComplete();
-    } else {
-      onClose();
-    }
+    onComplete?.({ mode: "batch", savedCount, duplicateCount });
+    onClose();
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -332,7 +318,12 @@ export function UploadModal({
     setSaving(true);
     setError("");
     try {
-      await onSave(beanId, fileName, fileContent, notes || undefined);
+      const result = await onUploadFile(beanId, fileName, fileContent, notes || undefined);
+      onComplete?.({
+        mode: "single",
+        roastId: result.roastId,
+        wasDuplicate: result.wasDuplicate,
+      });
       onClose();
       reset();
     } catch (err) {

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UploadModal } from "../UploadModal";
 import { useQuery } from "@apollo/client/react";
+import { previewsFor } from "../../../../../test/helpers/uploadModalHelpers";
 
 vi.mock("@apollo/client/react", () => ({
   useLazyQuery: vi.fn(() => [vi.fn().mockResolvedValue({ data: { parseSupplierNotes: [] } }), { loading: false }]),
@@ -33,8 +34,8 @@ const mockBeans = [
 const defaultProps = {
   isOpen: true,
   onClose: vi.fn(),
-  onPreview: vi.fn().mockResolvedValue(mockPreview),
-  onSave: vi.fn().mockResolvedValue({ roastId: "roast-1" }),
+  onPreviewFiles: vi.fn().mockImplementation(previewsFor(mockPreview)),
+  onUploadFile: vi.fn().mockResolvedValue({ roastId: "roast-1", wasDuplicate: false }),
   beans: mockBeans,
   onCreateBean: vi
     .fn()
@@ -76,18 +77,17 @@ describe("UploadModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("file upload triggers onPreview and shows preview", async () => {
-    const onPreview = vi.fn().mockResolvedValue(mockPreview);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+  it("file upload triggers onPreviewFiles and shows preview", async () => {
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(mockPreview));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
 
     await waitFor(() => {
-      expect(onPreview).toHaveBeenCalledWith(
-        "test.klog",
-        '{"roast":"data"}',
-      );
+      expect(onPreviewFiles).toHaveBeenCalledWith([
+        { fileName: "test.klog", fileContent: '{"roast":"data"}' },
+      ]);
     });
 
     await waitFor(() => {
@@ -120,8 +120,8 @@ describe("UploadModal", () => {
       suggestedBeans: [],
       communityBeans: [{ id: "community-bean-1", name: "Ethiopia Yirgacheffe Kochere Debo" }],
     };
-    const onPreview = vi.fn().mockResolvedValue(communityOnlyPreview);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(communityOnlyPreview));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -145,11 +145,11 @@ describe("UploadModal", () => {
       suggestedBeans: [],
       communityBeans: [{ id: "community-bean-1", name: "Ethiopia Yirgacheffe Kochere Debo" }],
     };
-    const onPreview = vi.fn().mockResolvedValue(communityOnlyPreview);
-    const onSave = vi.fn().mockResolvedValue({ roastId: "roast-1" });
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(communityOnlyPreview));
+    const onUploadFile = vi.fn().mockResolvedValue({ roastId: "roast-1", wasDuplicate: false });
     const user = userEvent.setup();
     render(
-      <UploadModal {...defaultProps} onPreview={onPreview} onSave={onSave} />
+      <UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} onUploadFile={onUploadFile} />
     );
 
     const fileInput = screen.getByTestId("file-input");
@@ -166,7 +166,7 @@ describe("UploadModal", () => {
     await user.click(saveBtn);
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(
+      expect(onUploadFile).toHaveBeenCalledWith(
         "community-bean-1",
         expect.any(String),
         expect.any(String),
@@ -187,9 +187,9 @@ describe("UploadModal", () => {
       suggestedBeans: [],
       parseWarnings: [],
       // communityBeans intentionally omitted
-    } as unknown as Parameters<typeof defaultProps.onPreview>[0] extends never ? never : Awaited<ReturnType<typeof defaultProps.onPreview>>;
-    const onPreview = vi.fn().mockResolvedValue(previewWithoutCommunity);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+    } as unknown as Record<string, unknown>;
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(previewWithoutCommunity));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -205,8 +205,8 @@ describe("UploadModal", () => {
       ...mockPreview,
       suggestedBeans: [],
     };
-    const onPreview = vi.fn().mockResolvedValue(noMatchPreview);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(noMatchPreview));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -223,8 +223,8 @@ describe("UploadModal", () => {
       ...mockPreview,
       suggestedBeans: [],
     };
-    const onPreview = vi.fn().mockResolvedValue(noMatchPreview);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(noMatchPreview));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -236,14 +236,14 @@ describe("UploadModal", () => {
     expect(screen.getByText("Save Roast")).toBeDisabled();
   });
 
-  it("save button calls onSave with correct args", async () => {
-    const onSave = vi.fn().mockResolvedValue({ roastId: "roast-1" });
+  it("save button calls onUploadFile with correct args", async () => {
+    const onUploadFile = vi.fn().mockResolvedValue({ roastId: "roast-1", wasDuplicate: false });
     const onClose = vi.fn();
     const user = userEvent.setup();
     render(
       <UploadModal
         {...defaultProps}
-        onSave={onSave}
+        onUploadFile={onUploadFile}
         onClose={onClose}
       />,
     );
@@ -263,7 +263,7 @@ describe("UploadModal", () => {
     await user.click(screen.getByText("Save Roast"));
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(
+      expect(onUploadFile).toHaveBeenCalledWith(
         "bean1",
         "test.klog",
         '{"roast":"data"}',
@@ -274,9 +274,11 @@ describe("UploadModal", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows error when onPreview fails", async () => {
-    const onPreview = vi.fn().mockRejectedValue(new Error("Invalid file format"));
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+  it("shows error when preview fails", async () => {
+    const onPreviewFiles = vi.fn().mockResolvedValue([
+      { fileName: "test.klog", preview: null, error: "Invalid file format" },
+    ]);
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -290,10 +292,10 @@ describe("UploadModal", () => {
     expect(screen.getByTestId("dropzone")).toBeInTheDocument();
   });
 
-  it("shows error when onSave fails", async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error("Network error"));
+  it("shows error when onUploadFile fails", async () => {
+    const onUploadFile = vi.fn().mockRejectedValue(new Error("Network error"));
     const user = userEvent.setup();
-    render(<UploadModal {...defaultProps} onSave={onSave} />);
+    render(<UploadModal {...defaultProps} onUploadFile={onUploadFile} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -316,8 +318,8 @@ describe("UploadModal", () => {
       ...mockPreview,
       parseWarnings: ["Missing ambient temperature", "Unusual roast duration"],
     };
-    const onPreview = vi.fn().mockResolvedValue(warningPreview);
-    render(<UploadModal {...defaultProps} onPreview={onPreview} />);
+    const onPreviewFiles = vi.fn().mockImplementation(previewsFor(warningPreview));
+    render(<UploadModal {...defaultProps} onPreviewFiles={onPreviewFiles} />);
 
     const fileInput = screen.getByTestId("file-input");
     fireEvent.change(fileInput, createFileChangeEvent());
@@ -347,7 +349,7 @@ describe("UploadModal", () => {
     render(
       <UploadModal
         {...defaultProps}
-        onPreview={vi.fn().mockResolvedValue(noMatchPreview)}
+        onPreviewFiles={vi.fn().mockImplementation(previewsFor(noMatchPreview))}
       />,
     );
 

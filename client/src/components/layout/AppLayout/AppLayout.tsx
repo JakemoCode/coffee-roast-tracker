@@ -6,7 +6,6 @@ import { useTheme, useTempUnit } from "../../../providers/AppProviders";
 import { Header } from "../Header";
 import { UploadModal } from "../../modals/UploadModal";
 import {
-  PREVIEW_ROAST_LOG,
   PREVIEW_ROAST_LOGS,
   UPLOAD_ROAST_LOG,
   CREATE_BEAN,
@@ -77,7 +76,6 @@ export function AppLayout() {
   const suppliers = suppliersData?.distinctSuppliers ?? [];
 
   // Upload mutations/queries
-  const [previewRoastLog] = useLazyQuery(PREVIEW_ROAST_LOG);
   const [uploadRoastLog] = useMutation(UPLOAD_ROAST_LOG, {
     refetchQueries: [{ query: MY_ROASTS_QUERY }],
   });
@@ -92,17 +90,7 @@ export function AppLayout() {
 
   const [previewRoastLogs] = useLazyQuery(PREVIEW_ROAST_LOGS);
 
-  async function handlePreview(fileName: string, fileContent: string) {
-    const { data } = await previewRoastLog({
-      variables: { fileName, fileContent },
-    });
-    if (!data?.previewRoastLog) {
-      throw new Error("Failed to preview roast log");
-    }
-    return data.previewRoastLog;
-  }
-
-  async function handlePreviewBatch(
+  async function handlePreviewFiles(
     files: Array<{ fileName: string; fileContent: string }>,
   ) {
     const { data } = await previewRoastLogs({
@@ -134,17 +122,6 @@ export function AppLayout() {
       roastId: data.uploadRoastLog.roast.id,
       wasDuplicate: data.uploadRoastLog.wasDuplicate,
     };
-  }
-
-  async function handleSave(
-    beanId: string,
-    fileName: string,
-    fileContent: string,
-    notes?: string,
-  ) {
-    const result = await handleUploadRoast(beanId, fileName, fileContent, notes);
-    navigate(`/roasts/${result.roastId}`);
-    return result;
   }
 
   async function handleCreateBean(bean: {
@@ -205,17 +182,19 @@ export function AppLayout() {
       <UploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
-        onPreview={handlePreview}
-        onPreviewBatch={handlePreviewBatch}
-        onSave={handleSave}
-        onSaveBatch={handleUploadRoast}
+        onPreviewFiles={handlePreviewFiles}
+        onUploadFile={handleUploadRoast}
         beans={beans}
         onCreateBean={handleCreateBean}
         flavors={flavorList}
         suppliers={suppliers}
-        onBatchComplete={() => {
+        onComplete={(result) => {
           setUploadOpen(false);
-          navigate("/");
+          if (result.mode === "single") {
+            navigate(`/roasts/${result.roastId}`);
+          } else {
+            navigate("/");
+          }
         }}
       />
     </div>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UploadModal } from "../UploadModal";
+import { previewsFor } from "../../../../../test/helpers/uploadModalHelpers";
 
 const mockParseNotes = vi.fn().mockResolvedValue({
   data: {
@@ -65,8 +66,9 @@ function renderUploadModal(overrides: Record<string, unknown> = {}) {
   const defaultProps = {
     isOpen: true,
     onClose: vi.fn(),
-    onPreview: vi.fn().mockResolvedValue(mockPreviewData),
-    onSave: vi.fn().mockResolvedValue({ roastId: "new-1", wasDuplicate: false }),
+    onPreviewFiles: vi.fn().mockImplementation(previewsFor(mockPreviewData)),
+    onUploadFile: vi.fn().mockResolvedValue({ roastId: "new-1", wasDuplicate: false }),
+    onComplete: vi.fn(),
     beans: mockBeans,
     onCreateBean: vi
       .fn()
@@ -129,11 +131,11 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(saveBtn);
 
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledOnce();
+      expect(props.onUploadFile).toHaveBeenCalledOnce();
     });
 
     // Verify correct arguments: beanId, fileName, fileContent, notes (undefined)
-    expect(props.onSave).toHaveBeenCalledWith(
+    expect(props.onUploadFile).toHaveBeenCalledWith(
       "bean-1",
       "test.klog",
       '{"roast":"data"}',
@@ -161,7 +163,7 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(screen.getByText("Save Roast"));
 
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith(
+      expect(props.onUploadFile).toHaveBeenCalledWith(
         "bean-1",
         "test.klog",
         '{"roast":"data"}',
@@ -200,7 +202,7 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(screen.getByText("Save Roast"));
 
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith(
+      expect(props.onUploadFile).toHaveBeenCalledWith(
         "bean-1",
         "test.klog",
         '{"roast":"data"}',
@@ -219,7 +221,7 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(screen.getByLabelText("Close modal"));
 
     expect(props.onClose).toHaveBeenCalledOnce();
-    expect(props.onSave).not.toHaveBeenCalled();
+    expect(props.onUploadFile).not.toHaveBeenCalled();
   });
 
   it("cancel at preview step calls onClose, not onSave", async () => {
@@ -237,7 +239,7 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(screen.getByText("Cancel"));
 
     expect(props.onClose).toHaveBeenCalledOnce();
-    expect(props.onSave).not.toHaveBeenCalled();
+    expect(props.onUploadFile).not.toHaveBeenCalled();
   });
 
   // ---- File validation ----
@@ -276,7 +278,7 @@ describe("UploadModal integration: multi-step flow", () => {
       suggestedBeans: [],
     };
     renderUploadModal({
-      onPreview: vi.fn().mockResolvedValue(noMatchPreview),
+      onPreviewFiles: vi.fn().mockImplementation(previewsFor(noMatchPreview)),
     });
 
     // Upload file with no bean match
@@ -350,7 +352,7 @@ describe("UploadModal integration: multi-step flow", () => {
       suggestedBeans: [],
     };
     const { props } = renderUploadModal({
-      onPreview: vi.fn().mockResolvedValue(noMatchPreview),
+      onPreviewFiles: vi.fn().mockImplementation(previewsFor(noMatchPreview)),
     });
 
     await uploadFile(user);
@@ -373,7 +375,7 @@ describe("UploadModal integration: multi-step flow", () => {
     await user.click(screen.getByText("Save Roast"));
 
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledOnce();
+      expect(props.onUploadFile).toHaveBeenCalledOnce();
     });
   });
 });
@@ -441,20 +443,21 @@ describe("UploadModal integration: batch upload flow", () => {
     expect(screen.getByText(/Skipped 1 non-.klog file/)).toBeInTheDocument();
   });
 
-  it("batch Save All calls onSave for each row using the shared bean", async () => {
+  it("batch Save All calls onUploadFile for each row using the shared bean and fires onComplete with batch result", async () => {
     const user = userEvent.setup();
-    const onPreviewMock = vi.fn().mockResolvedValue({
+    const previewWithMatch = {
       ...mockPreviewData,
       suggestedBeans: [
         { id: "ub-1", shortName: "Yirg", bean: { id: "bean-1", name: "Ethiopia Yirgacheffe" } },
       ],
-    });
-    const onSaveMock = vi.fn().mockResolvedValue({ roastId: "new-1" });
-    const onSaveBatchMock = vi.fn().mockResolvedValue({ roastId: "new-1" });
+    };
+    const onPreviewFilesMock = vi.fn().mockImplementation(previewsFor(previewWithMatch));
+    const onUploadFileMock = vi.fn().mockResolvedValue({ roastId: "new-1", wasDuplicate: false });
+    const onCompleteMock = vi.fn();
     renderUploadModal({
-      onPreview: onPreviewMock,
-      onSave: onSaveMock,
-      onSaveBatch: onSaveBatchMock,
+      onPreviewFiles: onPreviewFilesMock,
+      onUploadFile: onUploadFileMock,
+      onComplete: onCompleteMock,
     });
 
     const input = screen.getByTestId("file-input");
@@ -476,31 +479,38 @@ describe("UploadModal integration: batch upload flow", () => {
     await user.click(saveBtn);
 
     await waitFor(() => {
-      expect(onSaveBatchMock).toHaveBeenCalledTimes(2);
+      expect(onUploadFileMock).toHaveBeenCalledTimes(2);
     });
 
     // Both calls should use the same bean id
-    expect(onSaveBatchMock).toHaveBeenNthCalledWith(1, "bean-1", expect.any(String), expect.any(String));
-    expect(onSaveBatchMock).toHaveBeenNthCalledWith(2, "bean-1", expect.any(String), expect.any(String));
+    expect(onUploadFileMock).toHaveBeenNthCalledWith(1, "bean-1", expect.any(String), expect.any(String));
+    expect(onUploadFileMock).toHaveBeenNthCalledWith(2, "bean-1", expect.any(String), expect.any(String));
 
-    // onSave (with navigation) should NOT have been called
-    expect(onSaveMock).not.toHaveBeenCalled();
+    // onComplete fires once with the batch discriminator and counts
+    await waitFor(() => {
+      expect(onCompleteMock).toHaveBeenCalledWith({
+        mode: "batch",
+        savedCount: 2,
+        duplicateCount: 0,
+      });
+    });
   });
 
   it("batch Save All stops on first failure and shows error", async () => {
     const user = userEvent.setup();
-    const onPreviewMock = vi.fn().mockResolvedValue({
+    const previewWithMatch = {
       ...mockPreviewData,
       suggestedBeans: [
         { id: "ub-1", shortName: "Yirg", bean: { id: "bean-1", name: "Ethiopia Yirgacheffe" } },
       ],
-    });
-    const onSaveBatchMock = vi.fn()
-      .mockResolvedValueOnce({ roastId: "new-1" })
+    };
+    const onPreviewFilesMock = vi.fn().mockImplementation(previewsFor(previewWithMatch));
+    const onUploadFileMock = vi.fn()
+      .mockResolvedValueOnce({ roastId: "new-1", wasDuplicate: false })
       .mockRejectedValueOnce(new Error("Server error"));
     renderUploadModal({
-      onPreview: onPreviewMock,
-      onSaveBatch: onSaveBatchMock,
+      onPreviewFiles: onPreviewFilesMock,
+      onUploadFile: onUploadFileMock,
     });
 
     const input = screen.getByTestId("file-input");
@@ -521,7 +531,7 @@ describe("UploadModal integration: batch upload flow", () => {
     });
 
     // Only 2 calls: first succeeded, second failed, third never attempted
-    expect(onSaveBatchMock).toHaveBeenCalledTimes(2);
+    expect(onUploadFileMock).toHaveBeenCalledTimes(2);
   });
 
   it("too many files shows error", () => {
