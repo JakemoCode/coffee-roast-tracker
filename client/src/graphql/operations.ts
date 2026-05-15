@@ -1,6 +1,7 @@
 import { graphql } from "./graphql";
 import { BEAN_CARD_FIELDS } from "../components/BeanCard";
 import { FLAVOR_DESCRIPTOR_FIELDS } from "../components/modals/FlavorPickerModal";
+import { ROAST_PREVIEW_FIELDS } from "../components/modals/UploadModal/RoastPreviewFragment";
 import { ROAST_ROW_FIELDS } from "../components/tables/RoastsTable";
 import { ROAST_METRIC_FIELDS } from "../pages/RoastDetail/RoastMetricsTable";
 
@@ -160,65 +161,17 @@ export const COMMUNITY_STATS_QUERY = graphql(`
   }
 `);
 
-export const PREVIEW_ROAST_LOG = graphql(`
-  query PreviewRoastLog($fileName: String!, $fileContent: String!) {
-    previewRoastLog(fileName: $fileName, fileContent: $fileContent) {
-      roastDate
-      ambientTemp
-      roastingLevel
-      profileShortName
-      profileDesigner
-      colourChangeTime
-      firstCrackTime
-      roastEndTime
-      developmentPercent
-      totalDuration
-      suggestedBeans {
-        id
-        shortName
-        bean { id name }
-      }
-      communityBeans {
-        id
-        name
-      }
-      parseWarnings
-      existingRoastId
-    }
-  }
-`);
-
 export const PREVIEW_ROAST_LOGS = graphql(`
   query PreviewRoastLogs($files: [RoastLogInput!]!) {
     previewRoastLogs(files: $files) {
       fileName
       error
       preview {
-        roastDate
-        ambientTemp
-        roastingLevel
-        profileShortName
-        profileDesigner
-        colourChangeTime
-        firstCrackTime
-        roastEndTime
-        developmentPercent
-        totalDuration
-        suggestedBeans {
-          id
-          shortName
-          bean { id name }
-        }
-        communityBeans {
-          id
-          name
-        }
-        parseWarnings
-        existingRoastId
+        ...RoastPreviewFields
       }
     }
   }
-`);
+`, [ROAST_PREVIEW_FIELDS]);
 
 export const PARSE_SUPPLIER_NOTES_QUERY = graphql(`
   query ParseSupplierNotes($text: String!) {
