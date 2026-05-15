@@ -14,7 +14,6 @@ import {
   SET_ROAST_FLAVORS,
   SET_ROAST_OFF_FLAVORS,
   DOWNLOAD_PROFILE_QUERY,
-  FLAVOR_DESCRIPTORS_QUERY,
   MY_ROASTS_QUERY,
   ROASTS_BY_IDS_QUERY,
 } from "../../graphql/operations";
@@ -28,6 +27,7 @@ import { ErrorState } from "../../components/placeholders/ErrorState";
 import { SkeletonLoader } from "../../components/placeholders/SkeletonLoader";
 import { useToast } from "../../utils/Toast";
 import { formatDate } from "../../lib/formatters";
+import { useFlavorDescriptors } from "../../lib/useFlavorDescriptors";
 import { readFromPath, labelForPath } from "../../lib/backCrumb";
 import styles from "./RoastDetailPage.module.css";
 
@@ -100,16 +100,10 @@ export function RoastDetailPage() {
     timeSeriesData: (r.timeSeriesData ?? []) as TimeSeriesEntry[],
   }));
 
-  // Flavor descriptors for picker modal
-  const { data: flavorData } = useQuery(FLAVOR_DESCRIPTORS_QUERY, {
-    variables: { isOffFlavor: false },
-    skip: !isOwner,
-  });
-
-  const { data: offFlavorData } = useQuery(FLAVOR_DESCRIPTORS_QUERY, {
-    variables: { isOffFlavor: true },
-    skip: !isOwner,
-  });
+  // Flavor descriptors for picker modal — only the owner can edit flavors,
+  // so skip the fetch for non-owners.
+  const { descriptors: regularFlavors } = useFlavorDescriptors({ isOffFlavor: false, skip: !isOwner });
+  const { descriptors: offFlavors } = useFlavorDescriptors({ isOffFlavor: true, skip: !isOwner });
 
   // Mutations
   const [updateRoast] = useMutation(UPDATE_ROAST_MUTATION);
@@ -509,7 +503,7 @@ export function RoastDetailPage() {
           isOpen={showFlavorPicker}
           onClose={() => setShowFlavorPicker(false)}
           mode="flavors"
-          descriptors={flavorData?.flavorDescriptors ?? []}
+          descriptors={regularFlavors}
           selectedIds={roast.flavors.map((f) => f.id)}
           onSave={handleSaveFlavors}
         />
@@ -519,7 +513,7 @@ export function RoastDetailPage() {
           isOpen={showOffFlavorPicker}
           onClose={() => setShowOffFlavorPicker(false)}
           mode="off-flavors"
-          descriptors={offFlavorData?.flavorDescriptors ?? []}
+          descriptors={offFlavors}
           selectedIds={roast.offFlavors.map((f) => f.id)}
           onSave={handleSaveOffFlavors}
         />

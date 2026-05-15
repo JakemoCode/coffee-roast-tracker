@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { useAuthState } from "../../lib/useAuthState";
 import { useFlavorParser } from "../../lib/useFlavorParser";
+import { useFlavorDescriptors } from "../../lib/useFlavorDescriptors";
 import {
   PUBLIC_BEAN_QUERY,
   PUBLIC_ROASTS_QUERY,
@@ -11,7 +12,6 @@ import {
   UPDATE_USER_BEAN,
   UPDATE_BEAN_SUGGESTED_FLAVORS,
   REMOVE_BEAN_MUTATION,
-  FLAVOR_DESCRIPTORS_QUERY,
   MY_BEANS_QUERY,
 } from "../../graphql/operations";
 import { FlavorPill } from "../../components/FlavorPill";
@@ -96,11 +96,7 @@ export function BeanDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Flavor descriptors for parsing
-  const { data: flavorData } = useQuery(FLAVOR_DESCRIPTORS_QUERY);
-  const flavorList = (flavorData?.flavorDescriptors ?? []).map((f: { name: string; color: string }) => ({
-    name: f.name,
-    color: f.color,
-  }));
+  const { descriptors: flavorList } = useFlavorDescriptors();
 
   // Cupping notes paste — flavor parsing seam
   const bean: BeanResult | undefined = beanData?.bean;

@@ -3,12 +3,12 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { useAuthState } from "../../lib/useAuthState";
 import { useNavigate } from "react-router-dom";
 import { useSortableList } from "../../lib/useSortableList";
+import { useFlavorDescriptors } from "../../lib/useFlavorDescriptors";
 import {
   MY_BEANS_QUERY,
   MY_ROASTS_QUERY,
   PUBLIC_BEANS_QUERY,
   CREATE_BEAN,
-  FLAVOR_DESCRIPTORS_QUERY,
   DISTINCT_SUPPLIERS_QUERY,
 } from "../../graphql/operations";
 import { BeanCard } from "../../components/BeanCard";
@@ -125,11 +125,7 @@ export function BeanLibraryPage() {
     skip: !showCommunity,
   });
 
-  const { data: flavorData } = useQuery(FLAVOR_DESCRIPTORS_QUERY);
-  const flavorList = (flavorData?.flavorDescriptors ?? []).map((f: { name: string; color: string }) => ({
-    name: f.name,
-    color: f.color,
-  }));
+  const { descriptors: flavorList } = useFlavorDescriptors();
 
   const { data: suppliersData } = useQuery(DISTINCT_SUPPLIERS_QUERY, { fetchPolicy: "cache-first" });
   const supplierList = suppliersData?.distinctSuppliers ?? [];

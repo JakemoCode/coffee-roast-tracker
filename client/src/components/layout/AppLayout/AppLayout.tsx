@@ -5,6 +5,7 @@ import { useLazyQuery, useMutation, useQuery } from "@apollo/client/react";
 import { useTheme, useTempUnit } from "../../../providers/AppProviders";
 import { Header } from "../Header";
 import { UploadModal } from "../../modals/UploadModal";
+import { useFlavorDescriptors } from "../../../lib/useFlavorDescriptors";
 import {
   PREVIEW_ROAST_LOGS,
   UPLOAD_ROAST_LOG,
@@ -15,7 +16,6 @@ import {
   UPDATE_TEMP_UNIT,
   UPDATE_THEME,
   UPDATE_PRIVACY_DEFAULT,
-  FLAVOR_DESCRIPTORS_QUERY,
   DISTINCT_SUPPLIERS_QUERY,
 } from "../../../graphql/operations";
 import styles from "./AppLayout.module.css";
@@ -65,11 +65,7 @@ export function AppLayout() {
     })) ?? [];
 
   // Flavor descriptors for AddBeanModal flavor parsing
-  const { data: flavorData } = useQuery(FLAVOR_DESCRIPTORS_QUERY);
-  const flavorList = (flavorData?.flavorDescriptors ?? []).map((f: { name: string; color: string }) => ({
-    name: f.name,
-    color: f.color,
-  }));
+  const { descriptors: flavorList } = useFlavorDescriptors();
 
   // Distinct suppliers for AddBeanModal supplier combobox
   const { data: suppliersData } = useQuery(DISTINCT_SUPPLIERS_QUERY, { fetchPolicy: "cache-first" });
