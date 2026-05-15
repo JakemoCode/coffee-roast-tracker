@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery, useMutation, useLazyQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { useAuthState } from "../../lib/useAuthState";
+import { useFlavorParser } from "../../lib/useFlavorParser";
 import {
   PUBLIC_BEAN_QUERY,
   PUBLIC_ROASTS_QUERY,
@@ -11,7 +12,6 @@ import {
   UPDATE_BEAN_SUGGESTED_FLAVORS,
   REMOVE_BEAN_MUTATION,
   FLAVOR_DESCRIPTORS_QUERY,
-  PARSE_SUPPLIER_NOTES_QUERY,
   MY_BEANS_QUERY,
 } from "../../graphql/operations";
 import { FlavorPill } from "../../components/FlavorPill";
@@ -92,11 +92,6 @@ export function BeanDetailPage() {
     shortName: "",
   });
 
-  // Cupping notes paste
-  const [cuppingText, setCuppingText] = useState("");
-  const [parsedFlavors, setParsedFlavors] = useState<string[]>([]);
-  const [parseNotes, { loading: parsingNotes }] = useLazyQuery(PARSE_SUPPLIER_NOTES_QUERY);
-
   // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -106,6 +101,23 @@ export function BeanDetailPage() {
     name: f.name,
     color: f.color,
   }));
+
+  // Cupping notes paste — flavor parsing seam
+  const bean: BeanResult | undefined = beanData?.bean;
+  const {
+    text: cuppingText,
+    setText: setCuppingText,
+    parsed: parsedFlavors,
+    isParsing: parsingNotes,
+    parse: handleParseCuppingNotes,
+    addManual: handleAddFlavorFromCombobox,
+    remove: removeParsedFlavor,
+    availableOptions: availableFlavorOptions,
+    reset: resetFlavorParser,
+  } = useFlavorParser({
+    availableFlavors: flavorList,
+    alreadySelected: bean?.suggestedFlavors ?? [],
+  });
 
   // Mutations
   const [updateBean] = useMutation(UPDATE_BEAN, {
@@ -121,7 +133,6 @@ export function BeanDetailPage() {
     refetchQueries: [{ query: MY_BEANS_QUERY }],
   });
 
-  const bean: BeanResult | undefined = beanData?.bean;
   const loading = beanLoading || (isOwner ? privateRoastsLoading : publicRoastsLoading);
 
   const rawRoasts = isOwner && privateRoastsData?.roastsByBean
@@ -192,30 +203,6 @@ export function BeanDetailPage() {
     setEditing(false);
   }
 
-  async function handleParseCuppingNotes() {
-    if (!cuppingText.trim()) return;
-    const { data } = await parseNotes({ variables: { text: cuppingText } });
-    if (data?.parseSupplierNotes) {
-      setParsedFlavors(data.parseSupplierNotes.map((d) => d.name));
-    }
-  }
-
-  const availableFlavorOptions = useMemo(() => {
-    const existing = new Set([
-      ...(bean?.suggestedFlavors ?? []).map((f) => f.toLowerCase()),
-      ...parsedFlavors.map((f) => f.toLowerCase()),
-    ]);
-    return flavorList
-      .filter((f) => !existing.has(f.name.toLowerCase()))
-      .map((f) => ({ value: f.name, label: f.name }));
-  }, [flavorList, parsedFlavors, bean?.suggestedFlavors]);
-
-  function handleAddFlavorFromCombobox(name: string) {
-    if (name && !parsedFlavors.includes(name)) {
-      setParsedFlavors((prev) => [...prev, name]);
-    }
-  }
-
   function handleSaveParsedFlavors() {
     if (!bean || parsedFlavors.length === 0) return;
     const existing = bean.suggestedFlavors ?? [];
@@ -223,8 +210,7 @@ export function BeanDetailPage() {
     updateSuggestedFlavors({
       variables: { beanId: bean.id, suggestedFlavors: merged },
     });
-    setCuppingText("");
-    setParsedFlavors([]);
+    resetFlavorParser();
   }
 
   function handleRemoveSuggestedFlavor(flavor: string) {
@@ -481,9 +467,7 @@ export function BeanDetailPage() {
                       key={f}
                       name={f}
                       color={descriptor?.color ?? "#888888"}
-                      onRemove={() =>
-                        setParsedFlavors((prev) => prev.filter((pf) => pf !== f))
-                      }
+                      onRemove={() => removeParsedFlavor(f)}
                     />
                   );
                 })}
