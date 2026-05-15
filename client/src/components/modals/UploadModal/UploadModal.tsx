@@ -7,39 +7,16 @@ import { BatchUploadTable } from "../../tables/BatchUploadTable";
 import type { BatchRow } from "../../tables/BatchUploadTable";
 import { formatDuration } from "../../../lib/formatters";
 import { PUBLIC_BEANS_QUERY } from "../../../graphql/operations";
+import { ROAST_PREVIEW_FIELDS } from "./RoastPreviewFragment";
+import type { FragmentOf } from "../../../graphql/graphql";
 import styles from "./UploadModal.module.css";
 
 const PUBLIC_BEAN_SEARCH_LIMIT = 500;
 
 const MAX_FILES = 20;
 
-interface SuggestedBean {
-  id: string;
-  shortName: string | null;
-  bean: { id: string; name: string };
-}
-
-interface CommunityBean {
-  id: string;
-  name: string;
-}
-
-interface RoastPreview {
-  roastDate?: string | null;
-  ambientTemp?: number | null;
-  roastingLevel?: number | null;
-  profileShortName?: string | null;
-  profileDesigner?: string | null;
-  colourChangeTime?: number | null;
-  firstCrackTime?: number | null;
-  roastEndTime?: number | null;
-  developmentPercent?: number | null;
-  totalDuration?: number | null;
-  suggestedBeans: SuggestedBean[];
-  communityBeans: CommunityBean[];
-  parseWarnings: string[];
-  existingRoastId?: string | null;
-}
+type RoastPreview = FragmentOf<typeof ROAST_PREVIEW_FIELDS>;
+type CommunityBean = RoastPreview["communityBeans"][number];
 
 export type UploadCompleteResult =
   | { mode: "single"; roastId: string; wasDuplicate: boolean }

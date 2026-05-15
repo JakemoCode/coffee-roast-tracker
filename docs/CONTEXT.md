@@ -6,8 +6,39 @@ architecture grilling sessions (`/improve-codebase-architecture`).
 
 ## Domain concepts
 
-(none yet — this file was lazy-created during the `useSortableList` grill.
-Add domain terms here as they crystallise.)
+### Roast preview
+
+The parsed-but-not-saved view of a `.klog` file. The user uploads a
+file, the server parses it and returns the extracted metadata plus
+bean-matching hints (library matches + community matches), and the
+user reviews + commits or cancels before any roast row is created.
+
+Owned by the **`ROAST_PREVIEW_FIELDS`** fragment at
+`client/src/components/modals/UploadModal/RoastPreviewFragment.ts`.
+The TypeScript shape derives via `FragmentOf<typeof ROAST_PREVIEW_FIELDS>`
+— callers should never hand-roll the preview interface.
+
+The fragment lives in its own tiny file (rather than colocated in
+`UploadModal.tsx`) to avoid a circular import: `operations.ts` needs
+the fragment for `PREVIEW_ROAST_LOGS`, but `UploadModal.tsx` imports
+`PUBLIC_BEANS_QUERY` from `operations.ts`. A neutral fragment file
+breaks the cycle and matches the `FlavorPickerModal` pattern.
+
+Server type: `RoastLogPreview` (note: the GraphQL type name keeps the
+`Log` because the schema talks about roast LOG files; the client uses
+`RoastPreview` colloquially because that's the user-facing concept).
+
+Fields include parse metadata (roastDate, totalDuration, profile info,
+crack times), bean-matching results (`suggestedBeans` library hits +
+`communityBeans` catalogue hits), parse warnings, and an
+`existingRoastId` for duplicate detection.
+
+Adapters today:
+
+- `client/src/graphql/operations.ts` — `PREVIEW_ROAST_LOGS` query
+  spreads the fragment to fetch previews in batch.
+- `client/src/components/modals/UploadModal/UploadModal.tsx` —
+  consumes via `FragmentOf` for its `RoastPreview` type.
 
 ## Client architecture concepts
 
