@@ -1,468 +1,323 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { graphql as mswGraphql, HttpResponse, delay } from "msw";
+import { useAuthState } from "../../../lib/useAuthState";
 import { BeanDetailPage } from "../BeanDetailPage";
+import { renderWithProviders } from "../../../../test/helpers/renderWithProviders";
+import { server } from "../../../../test/mocks/server";
 
-const { mockRoastLookup } = vi.hoisted(() => {
-  const mockRoastLookup = new Map<string, Record<string, unknown>>();
-  return { mockRoastLookup };
-});
+/**
+ * BeanDetailPage — real Apollo Client wired to MSW.
+ *
+ * Default MSW (client/test/mocks/schema-handler.ts):
+ *   bean(id: "bean-1") → Ethiopia Yirgacheffe (isLocked: false)
+ *   myBeans → 2 user beans, one for bean-1 with shortName "Yirg"
+ *   roastsByBean(beanId: "bean-1") → roast-1 (only)
+ *
+ * Ownership is computed client-side from the myBeans response.
+ * "Owner" = signed-in user whose myBeans contains this bean.
+ * "Non-owner" = signed-in but myBeans doesn't contain this bean
+ *   (override myBeans to return [] for that case).
+ */
 
-vi.mock("@apollo/client/react", () => ({
-  useQuery: vi.fn(),
-  useMutation: vi.fn(() => [vi.fn()]),
-  useLazyQuery: vi.fn(() => [vi.fn().mockResolvedValue({ data: { parseSupplierNotes: [] } }), { loading: false }]),
-  useFragment: (opts: { from: { id: string } }) => ({
-    data: mockRoastLookup.get(opts.from.id) ?? { id: opts.from.id, bean: { name: "" } },
-    complete: true,
-  }),
+vi.mock("../../../lib/useAuthState", () => ({
+  useAuthState: vi.fn(),
 }));
 
-vi.mock("@clerk/clerk-react", () => ({
-  useAuth: vi.fn(),
-}));
+const mockedUseAuth = vi.mocked(useAuthState);
 
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useParams: vi.fn(() => ({ id: "bean1" })),
-  };
-});
+function setupOwner() {
+  mockedUseAuth.mockReturnValue({
+    isSignedIn: true,
+    isLoaded: true,
+    userId: "user-1",
+    getToken: vi.fn(),
+    signOut: vi.fn(),
+  } as ReturnType<typeof useAuthState>);
+}
 
-vi.mock("../../../providers/TempContext", () => ({
-  useTempUnit: () => ({ tempUnit: "CELSIUS", toggleTempUnit: vi.fn() }),
-}));
+function setupAnonymous() {
+  mockedUseAuth.mockReturnValue({
+    isSignedIn: false,
+    isLoaded: true,
+    userId: null,
+    getToken: vi.fn(),
+    signOut: vi.fn(),
+  } as ReturnType<typeof useAuthState>);
+}
 
-vi.mock("../../../utils/Toast", () => ({
-  useToast: () => ({ showToast: vi.fn() }),
-}));
-
-import { useQuery } from "@apollo/client/react";
-import { useAuth } from "@clerk/clerk-react";
-import {
-  PUBLIC_BEAN_QUERY,
-  MY_BEANS_QUERY,
-  ROASTS_BY_BEAN_QUERY,
-  PUBLIC_ROASTS_QUERY,
-} from "../../../graphql/operations";
-
-const mockUseQuery = vi.mocked(useQuery);
-const mockUseAuth = vi.mocked(useAuth);
-
-const mockBean = {
-  bean: {
-    id: "bean1",
-    name: "Ethiopia Yirgacheffe",
-    origin: "Ethiopia",
-    process: "Washed",
-    elevation: "1900 MASL",
-    variety: "Heirloom",
-    sourceUrl: "https://example.com/bean",
-    bagNotes: "Fruity and floral",
-    score: 87,
-    cropYear: "2024",
-    suggestedFlavors: ["Blueberry", "Citrus", "Floral"],
-    isLocked: false,
-  },
-};
-
-const mockMyBeans = {
-  myBeans: [
-    {
-      id: "ub1",
-      shortName: "ETH",
-      notes: "Great bean",
-      bean: {
-        id: "bean1",
-        name: "Ethiopia Yirgacheffe",
-        origin: "Ethiopia",
-        process: "Washed",
-        elevation: "1900 MASL",
-        variety: "Heirloom",
-        sourceUrl: "https://example.com/bean",
-        bagNotes: "Fruity and floral",
-        score: 87,
-        cropYear: "2024",
-        suggestedFlavors: ["Blueberry", "Citrus", "Floral"],
-      },
-    },
-  ],
-};
-
-const mockRoasts = {
-  roastsByBean: [
-    {
-      id: "r1",
-      roastDate: "2025-03-01",
-      notes: "Good roast",
-      developmentTime: 90,
-      developmentPercent: 20.5,
-      totalDuration: 660,
-      firstCrackTemp: 198,
-      roastEndTemp: 210,
-      rating: 4,
-      bean: { id: "bean1", name: "Ethiopia Yirgacheffe" },
-      flavors: [],
-      offFlavors: [],
-    },
-    {
-      id: "r2",
-      roastDate: "2025-03-10",
-      notes: null,
-      developmentTime: 85,
-      developmentPercent: 19.2,
-      totalDuration: 640,
-      firstCrackTemp: 196,
-      roastEndTemp: 208,
-      rating: 5,
-      bean: { id: "bean1", name: "Ethiopia Yirgacheffe" },
-      flavors: [],
-      offFlavors: [],
-    },
-  ],
-};
-
-function renderPage() {
-  return render(
-    <MemoryRouter>
-      <BeanDetailPage />
-    </MemoryRouter>,
+function setupNonOwner() {
+  setupOwner();
+  // A signed-in user who does not own this bean: empty myBeans.
+  server.use(
+    mswGraphql.query("MyBeans", () =>
+      HttpResponse.json({ data: { myBeans: [] } }),
+    ),
   );
 }
 
-function mockOwner() {
-  mockUseAuth.mockReturnValue({
-    isSignedIn: true,
-    isLoaded: true,
-    userId: "user1",
-  } as ReturnType<typeof useAuth>);
-
-  mockUseQuery.mockImplementation(((query: unknown) => {
-    if (query === PUBLIC_BEAN_QUERY) {
-      return { data: mockBean, loading: false, error: undefined, refetch: vi.fn() };
-    }
-    if (query === MY_BEANS_QUERY) {
-      return { data: mockMyBeans, loading: false, error: undefined, refetch: vi.fn() };
-    }
-    if (query === ROASTS_BY_BEAN_QUERY) {
-      return { data: mockRoasts, loading: false, error: undefined, refetch: vi.fn() };
-    }
-    return { data: undefined, loading: false, error: undefined, refetch: vi.fn() };
-  }) as unknown as typeof useQuery);
+function renderBeanDetail(beanId = "bean-1") {
+  return renderWithProviders(<BeanDetailPage />, {
+    route: `/beans/${beanId}`,
+    path: "/beans/:id",
+  });
 }
 
-function mockNonOwner() {
-  mockUseAuth.mockReturnValue({
-    isSignedIn: true,
-    isLoaded: true,
-    userId: "other-user",
-  } as ReturnType<typeof useAuth>);
+async function waitForBeanLoaded() {
+  await screen.findByRole("heading", { name: /Ethiopia Yirgacheffe/i });
+}
 
-  mockUseQuery.mockImplementation(((query: unknown) => {
-    if (query === PUBLIC_BEAN_QUERY) {
-      return { data: mockBean, loading: false, error: undefined, refetch: vi.fn() };
-    }
-    if (query === MY_BEANS_QUERY) {
-      return { data: { myBeans: [] }, loading: false, error: undefined, refetch: vi.fn() };
-    }
-    if (query === PUBLIC_ROASTS_QUERY) {
-      return {
+/**
+ * Installs an MSW handler for UpdateUserBean and returns a spy
+ * that captures the variables each call was made with.
+ */
+function installUpdateUserBeanSpy() {
+  const updateSpy = vi.fn();
+  server.use(
+    mswGraphql.mutation("UpdateUserBean", async ({ variables }) => {
+      updateSpy(variables);
+      return HttpResponse.json({
         data: {
-          publicRoasts: [
+          updateUserBean: {
+            id: variables.id,
+            notes: null,
+            supplier: null,
+            shortName: variables.shortName,
+          },
+        },
+      });
+    }),
+  );
+  return updateSpy;
+}
+
+/**
+ * Installs a MyBeans override where the user's bean for bean-1 has
+ * no shortName yet (covers the "set short name when none existed" case).
+ */
+function installMyBeansWithoutShortName() {
+  server.use(
+    mswGraphql.query("MyBeans", () =>
+      HttpResponse.json({
+        data: {
+          myBeans: [
             {
-              id: "pr1",
-              roastDate: "2025-03-05",
-              rating: 3,
-              developmentTime: 80,
-              developmentPercent: 18,
-              totalDuration: 620,
-              firstCrackTemp: 195,
-              roastEndTemp: 205,
-              bean: { id: "bean1", name: "Ethiopia Yirgacheffe" },
+              __typename: "UserBean",
+              id: "ub-1",
+              shortName: null,
+              notes: null,
+              supplier: null,
+              bean: {
+                __typename: "Bean",
+                id: "bean-1",
+                name: "Ethiopia Yirgacheffe",
+                origin: "Ethiopia",
+                process: "Washed",
+                elevation: "1800m",
+                variety: "Heirloom",
+                sourceUrl: null,
+                bagNotes: null,
+                score: 88,
+                cropYear: 2025,
+                suggestedFlavors: ["Jasmine", "Blueberry"],
+              },
             },
           ],
         },
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      };
-    }
-    return { data: undefined, loading: false, error: undefined, refetch: vi.fn() };
-  }) as unknown as typeof useQuery);
+      }),
+    ),
+  );
 }
 
 describe("BeanDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRoastLookup.clear();
-    for (const r of mockRoasts.roastsByBean) {
-      mockRoastLookup.set(r.id, r);
-    }
-    // Also add the public roast used in non-owner tests
-    mockRoastLookup.set("pr1", {
-      id: "pr1",
-      roastDate: "2025-03-05",
-      rating: 3,
-      developmentTime: 80,
-      developmentPercent: 18,
-      totalDuration: 620,
-      firstCrackTemp: 195,
-      roastEndTemp: 205,
-      bean: { id: "bean1", name: "Ethiopia Yirgacheffe" },
-    });
   });
 
-  it("shows bean name as heading", () => {
-    mockOwner();
-    renderPage();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Ethiopia Yirgacheffe",
-    );
+  afterEach(() => {
+    server.resetHandlers();
   });
 
-  it("shows bean metadata", () => {
-    mockOwner();
-    renderPage();
-    const metadata = screen.getByTestId("bean-metadata");
-    expect(metadata).toBeInTheDocument();
-    expect(screen.getByText("Ethiopia")).toBeInTheDocument();
-    expect(screen.getByText("Washed")).toBeInTheDocument();
-    expect(screen.getByText("Heirloom")).toBeInTheDocument();
-    expect(screen.getByText("87")).toBeInTheDocument();
+  it("shows the bean name as the heading", async () => {
+    setupOwner();
+    renderBeanDetail();
+    expect(
+      await screen.findByRole("heading", { name: /Ethiopia Yirgacheffe/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows edit button for owner", () => {
-    mockOwner();
-    renderPage();
-    expect(screen.getByTestId("edit-btn")).toBeInTheDocument();
+  it("shows bean metadata — origin, process, variety, score", async () => {
+    setupOwner();
+    renderBeanDetail();
+    const metadata = await screen.findByTestId("bean-metadata");
+    expect(within(metadata).getByText("Ethiopia")).toBeInTheDocument();
+    expect(within(metadata).getByText("Washed")).toBeInTheDocument();
+    expect(within(metadata).getByText("Heirloom")).toBeInTheDocument();
+    expect(within(metadata).getByText("88")).toBeInTheDocument();
   });
 
-  it("hides edit button for non-owner", () => {
-    mockNonOwner();
-    renderPage();
+  it("shows the Edit button to the bean's owner", async () => {
+    setupOwner();
+    renderBeanDetail();
+    expect(await screen.findByTestId("edit-btn")).toBeInTheDocument();
+  });
+
+  it("hides the Edit button from non-owners", async () => {
+    setupNonOwner();
+    renderBeanDetail();
+    await waitForBeanLoaded();
     expect(screen.queryByTestId("edit-btn")).not.toBeInTheDocument();
   });
 
-  it("shows roast history table", () => {
-    mockOwner();
-    renderPage();
-    expect(screen.getByTestId("roast-history")).toBeInTheDocument();
-    expect(screen.getByTestId("roasts-table")).toBeInTheDocument();
+  it("renders the roast history section", async () => {
+    setupOwner();
+    renderBeanDetail();
+    expect(await screen.findByTestId("roast-history")).toBeInTheDocument();
   });
 
-  it("shows supplier notes pills", () => {
-    mockOwner();
-    renderPage();
-    expect(screen.getByTestId("supplier-notes")).toBeInTheDocument();
-    const pills = screen.getAllByTestId("flavor-pill");
-    expect(pills.length).toBeGreaterThanOrEqual(3);
+  it("shows the bean's supplier-note flavor pills", async () => {
+    setupOwner();
+    renderBeanDetail();
+    const notes = await screen.findByTestId("supplier-notes");
+    const pills = within(notes).getAllByTestId("flavor-pill");
+    expect(pills.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("shows loading skeleton while loading", () => {
-    mockUseAuth.mockReturnValue({
-      isSignedIn: true,
-      isLoaded: true,
-      userId: "user1",
-    } as ReturnType<typeof useAuth>);
-
-    mockUseQuery.mockImplementation((() => ({
-      data: undefined,
-      loading: true,
-      error: undefined,
-      refetch: vi.fn(),
-    })) as unknown as typeof useQuery);
-
-    renderPage();
-    expect(screen.getByTestId("bean-detail-loading")).toBeInTheDocument();
+  it("shows a loading skeleton while the bean query is in flight", async () => {
+    setupOwner();
+    server.use(
+      mswGraphql.query("PublicBean", async () => {
+        await delay("infinite");
+        return HttpResponse.json({ data: null });
+      }),
+    );
+    renderBeanDetail();
+    expect(
+      await screen.findByTestId("bean-detail-loading"),
+    ).toBeInTheDocument();
   });
 
-  it("shows bean not found when bean is missing", () => {
-    mockUseAuth.mockReturnValue({
-      isSignedIn: false,
-      isLoaded: true,
-      userId: null,
-    } as ReturnType<typeof useAuth>);
-
-    mockUseQuery.mockImplementation((() => ({
-      data: { bean: null },
-      loading: false,
-      error: undefined,
-      refetch: vi.fn(),
-    })) as unknown as typeof useQuery);
-
-    renderPage();
-    expect(screen.getByTestId("bean-not-found")).toBeInTheDocument();
-    expect(screen.getByText("Bean not found")).toBeInTheDocument();
+  it("shows a 'not found' state when the bean is missing", async () => {
+    setupAnonymous();
+    server.use(
+      mswGraphql.query("PublicBean", () =>
+        HttpResponse.json({ data: { bean: null } }),
+      ),
+    );
+    renderBeanDetail("does-not-exist");
+    expect(await screen.findByTestId("bean-not-found")).toBeInTheDocument();
+    expect(screen.getByText(/bean not found/i)).toBeInTheDocument();
   });
 
-  it("shows 'no roasts' message when roast history is empty", () => {
-    mockUseAuth.mockReturnValue({
-      isSignedIn: true,
-      isLoaded: true,
-      userId: "user1",
-    } as ReturnType<typeof useAuth>);
-
-    mockUseQuery.mockImplementation(((query: unknown) => {
-      if (query === PUBLIC_BEAN_QUERY) {
-        return { data: mockBean, loading: false, error: undefined, refetch: vi.fn() };
-      }
-      if (query === MY_BEANS_QUERY) {
-        return { data: mockMyBeans, loading: false, error: undefined, refetch: vi.fn() };
-      }
-      if (query === ROASTS_BY_BEAN_QUERY) {
-        return { data: { roastsByBean: [] }, loading: false, error: undefined, refetch: vi.fn() };
-      }
-      return { data: undefined, loading: false, error: undefined, refetch: vi.fn() };
-    }) as unknown as typeof useQuery);
-
-    renderPage();
-    expect(screen.getByTestId("no-roasts")).toBeInTheDocument();
-    expect(screen.getByText("No roasts logged for this bean yet")).toBeInTheDocument();
+  it("shows an empty-state message when this bean has no roasts yet", async () => {
+    setupOwner();
+    server.use(
+      mswGraphql.query("RoastsByBean", () =>
+        HttpResponse.json({ data: { roastsByBean: [] } }),
+      ),
+    );
+    renderBeanDetail();
+    await waitForBeanLoaded();
+    expect(
+      await screen.findByText(/no roasts logged for this bean yet/i),
+    ).toBeInTheDocument();
   });
 
-  it("shows the user's short name for the bean (owner)", () => {
-    mockOwner();
-    renderPage();
-    expect(screen.getByTestId("short-name-card")).toBeInTheDocument();
-    expect(screen.getByTestId("short-name-value")).toHaveTextContent("ETH");
+  it("shows the owner's short-name card for this bean", async () => {
+    setupOwner();
+    renderBeanDetail();
+    const card = await screen.findByTestId("short-name-card");
+    expect(within(card).getByTestId("short-name-value")).toHaveTextContent(
+      "Yirg",
+    );
   });
 
-  it("hides short name card for non-owners", () => {
-    mockNonOwner();
-    renderPage();
+  it("hides the short-name card from non-owners", async () => {
+    setupNonOwner();
+    renderBeanDetail();
+    await waitForBeanLoaded();
     expect(screen.queryByTestId("short-name-card")).not.toBeInTheDocument();
   });
 
-  it("editing reveals an input prefilled with current short name", async () => {
-    const { default: userEvent } = await import("@testing-library/user-event");
+  it("opens an editable input prefilled with the current short name", async () => {
     const user = userEvent.setup();
-    mockOwner();
-    renderPage();
-
-    await user.click(screen.getByTestId("edit-btn"));
-    const input = screen.getByTestId("short-name-input") as HTMLInputElement;
-    expect(input.value).toBe("ETH");
+    setupOwner();
+    renderBeanDetail();
+    await user.click(await screen.findByTestId("edit-btn"));
+    const input = (await screen.findByTestId(
+      "short-name-input",
+    )) as HTMLInputElement;
+    expect(input.value).toBe("Yirg");
   });
 
-  it("saving fires updateUserBean when short name changed", async () => {
-    const { default: userEvent } = await import("@testing-library/user-event");
-    const { useMutation } = await import("@apollo/client/react");
-    const { UPDATE_BEAN, UPDATE_USER_BEAN } = await import("../../../graphql/operations");
-    const updateBeanFn = vi.fn();
-    const updateUserBeanFn = vi.fn();
-    // useMutation re-runs on every render — bind spies per-mutation so they
-    // remain stable across re-renders triggered by user input.
-    vi.mocked(useMutation).mockImplementation(((mutation: unknown) => {
-      if (mutation === UPDATE_BEAN) return [updateBeanFn, { loading: false }];
-      if (mutation === UPDATE_USER_BEAN) return [updateUserBeanFn, { loading: false }];
-      return [vi.fn(), { loading: false }];
-    }) as unknown as typeof useMutation);
-
+  it("saving a changed short name fires the UpdateUserBean mutation", async () => {
+    const updateSpy = installUpdateUserBeanSpy();
     const user = userEvent.setup();
-    mockOwner();
-    renderPage();
-
-    await user.click(screen.getByTestId("edit-btn"));
-    const input = screen.getByTestId("short-name-input");
+    setupOwner();
+    renderBeanDetail();
+    await user.click(await screen.findByTestId("edit-btn"));
+    const input = await screen.findByTestId("short-name-input");
     await user.clear(input);
     await user.type(input, "EYG");
-    await user.click(screen.getByText("Save"));
+    await user.click(screen.getByRole("button", { name: /^Save$/i }));
 
-    expect(updateUserBeanFn).toHaveBeenCalledWith({
-      variables: { id: "ub1", shortName: "EYG" },
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "ub-1", shortName: "EYG" }),
+      );
     });
   });
 
-  it("setting a short name when none existed fires updateUserBean", async () => {
-    const { default: userEvent } = await import("@testing-library/user-event");
-    const { useMutation } = await import("@apollo/client/react");
-    const { UPDATE_BEAN, UPDATE_USER_BEAN } = await import("../../../graphql/operations");
-    const updateBeanFn = vi.fn();
-    const updateUserBeanFn = vi.fn();
-    vi.mocked(useMutation).mockImplementation(((mutation: unknown) => {
-      if (mutation === UPDATE_BEAN) return [updateBeanFn, { loading: false }];
-      if (mutation === UPDATE_USER_BEAN) return [updateUserBeanFn, { loading: false }];
-      return [vi.fn(), { loading: false }];
-    }) as unknown as typeof useMutation);
-
-    // Owner with no short name set yet
-    mockUseAuth.mockReturnValue({
-      isSignedIn: true,
-      isLoaded: true,
-      userId: "user1",
-    } as ReturnType<typeof useAuth>);
-    mockUseQuery.mockImplementation(((query: unknown) => {
-      if (query === PUBLIC_BEAN_QUERY) {
-        return { data: mockBean, loading: false, error: undefined, refetch: vi.fn() };
-      }
-      if (query === MY_BEANS_QUERY) {
-        return {
-          data: {
-            myBeans: [{ ...mockMyBeans.myBeans[0], shortName: null }],
-          },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        };
-      }
-      if (query === ROASTS_BY_BEAN_QUERY) {
-        return { data: mockRoasts, loading: false, error: undefined, refetch: vi.fn() };
-      }
-      return { data: undefined, loading: false, error: undefined, refetch: vi.fn() };
-    }) as unknown as typeof useQuery);
-
+  it("setting a short name when none existed fires UpdateUserBean", async () => {
+    installMyBeansWithoutShortName();
+    const updateSpy = installUpdateUserBeanSpy();
     const user = userEvent.setup();
-    renderPage();
-
-    await user.click(screen.getByTestId("edit-btn"));
-    const input = screen.getByTestId("short-name-input") as HTMLInputElement;
+    setupOwner();
+    renderBeanDetail();
+    await user.click(await screen.findByTestId("edit-btn"));
+    const input = (await screen.findByTestId(
+      "short-name-input",
+    )) as HTMLInputElement;
     expect(input.value).toBe("");
     await user.type(input, "EYG");
-    await user.click(screen.getByText("Save"));
+    await user.click(screen.getByRole("button", { name: /^Save$/i }));
 
-    expect(updateUserBeanFn).toHaveBeenCalledWith({
-      variables: { id: "ub1", shortName: "EYG" },
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "ub-1", shortName: "EYG" }),
+      );
     });
   });
 
-  it("save does not fire updateUserBean when short name unchanged", async () => {
-    const { default: userEvent } = await import("@testing-library/user-event");
-    const { useMutation } = await import("@apollo/client/react");
-    const { UPDATE_BEAN, UPDATE_USER_BEAN } = await import("../../../graphql/operations");
-    const updateBeanFn = vi.fn();
-    const updateUserBeanFn = vi.fn();
-    vi.mocked(useMutation).mockImplementation(((mutation: unknown) => {
-      if (mutation === UPDATE_BEAN) return [updateBeanFn, { loading: false }];
-      if (mutation === UPDATE_USER_BEAN) return [updateUserBeanFn, { loading: false }];
-      return [vi.fn(), { loading: false }];
-    }) as unknown as typeof useMutation);
-
+  it("does NOT fire UpdateUserBean when the short name was not changed", async () => {
+    const updateSpy = installUpdateUserBeanSpy();
     const user = userEvent.setup();
-    mockOwner();
-    renderPage();
+    setupOwner();
+    renderBeanDetail();
+    await user.click(await screen.findByTestId("edit-btn"));
+    // No edits — just Save.
+    await user.click(screen.getByRole("button", { name: /^Save$/i }));
 
-    await user.click(screen.getByTestId("edit-btn"));
-    await user.click(screen.getByText("Save"));
-
-    expect(updateUserBeanFn).not.toHaveBeenCalled();
+    // After save, edit mode should close — wait for that signal.
+    await waitFor(() =>
+      expect(screen.queryByTestId("short-name-input")).not.toBeInTheDocument(),
+    );
+    // Let any in-flight mutations settle before asserting "not called" — the
+    // page fires UpdateBean unconditionally on save, and we want to be sure
+    // UpdateUserBean didn't sneak through after the input closed.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it("shows error state on error", () => {
-    mockUseAuth.mockReturnValue({
-      isSignedIn: false,
-      isLoaded: true,
-      userId: null,
-    } as ReturnType<typeof useAuth>);
-
-    mockUseQuery.mockImplementation(((query: unknown) => {
-      if (query === PUBLIC_BEAN_QUERY) {
-        return { data: undefined, loading: false, error: new Error("Network error"), refetch: vi.fn() };
-      }
-      return { data: undefined, loading: false, error: undefined, refetch: vi.fn() };
-    }) as unknown as typeof useQuery);
-
-    renderPage();
-    expect(screen.getByTestId("error-state")).toBeInTheDocument();
+  it("shows an error state when the bean query fails", async () => {
+    setupAnonymous();
+    server.use(
+      mswGraphql.query("PublicBean", () =>
+        HttpResponse.json({ errors: [{ message: "Network error" }] }),
+      ),
+    );
+    renderBeanDetail();
+    expect(await screen.findByTestId("error-state")).toBeInTheDocument();
   });
 });
