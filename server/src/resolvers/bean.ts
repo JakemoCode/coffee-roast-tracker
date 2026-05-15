@@ -2,7 +2,7 @@ import { GraphQLError } from "graphql";
 import { Prisma } from "@prisma/client";
 import type { Context } from "../context.js";
 import { requireAuth } from "../context.js";
-import { requireBean, requireUserBean } from "../lib/guardHelpers.js";
+import { requireBean, requireUserBean, requireUserBeanByBeanId } from "../lib/guardHelpers.js";
 import { normalizeName } from "../lib/normalizeName.js";
 
 // Short name is how uploaded roast profiles auto-match to a bean —
@@ -219,14 +219,7 @@ export const beanResolvers = {
       // properties of the green bean itself — community-edit is intentional.
       // Identity fields (name, origin, process, variety) are gated separately
       // below and lock once linkCount > 1.
-      const userBean = await ctx.prisma.userBean.findUnique({
-        where: { userId_beanId: { userId, beanId: id } },
-      });
-      if (!userBean) {
-        throw new GraphQLError("Bean not found in your library", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
+      await requireUserBeanByBeanId(ctx.prisma, id, userId);
 
       const { name, origin, process, variety, ...usageFields } = input;
       const hasNewName = name !== undefined && name !== null;
@@ -283,15 +276,7 @@ export const beanResolvers = {
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
-      // Verify the user owns this bean
-      const userBean = await ctx.prisma.userBean.findUnique({
-        where: { userId_beanId: { userId, beanId } },
-      });
-      if (!userBean) {
-        throw new GraphQLError("Bean not found in your library", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
+      await requireUserBeanByBeanId(ctx.prisma, beanId, userId);
       return ctx.prisma.bean.update({
         where: { id: beanId },
         data: { suggestedFlavors },
@@ -304,16 +289,7 @@ export const beanResolvers = {
       ctx: Context
     ) => {
       const userId = requireAuth(ctx);
-
-      const userBean = await ctx.prisma.userBean.findUnique({
-        where: { userId_beanId: { userId, beanId } },
-      });
-      if (!userBean) {
-        throw new GraphQLError("Bean not found in your library", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
-
+      const userBean = await requireUserBeanByBeanId(ctx.prisma, beanId, userId);
       await ctx.prisma.userBean.delete({ where: { id: userBean.id } });
       return true;
     },
