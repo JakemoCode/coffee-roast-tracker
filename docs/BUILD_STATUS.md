@@ -1,22 +1,39 @@
 # BUILD_STATUS.md
 
-> Last updated: 2026-04-15
+> Last updated: 2026-05-15
 
 ## Build Summary
 
 | Metric | Value |
 |--------|-------|
 | Components built | 36 / 36 |
-| RTL test files | 40 (incl. 4 integration) |
-| RTL tests passing | 309 / 309 |
+| RTL test files | 45 (incl. 4 integration) |
+| RTL tests passing | 380 / 380 |
 | Integration test files | 4 (upload-flow, add-bean-flow, roast-detail-flow, bean-detail-flow) |
-| Server test files | 12 |
-| Server tests passing | 146 / 146 |
-| E2E test files | 9 (+ 1 journeys) |
-| E2E tests passing | 105 / 105 |
-| Schema validation | 35 / 35 operations pass |
-| Flavor descriptors | 101 (SCA 2016 flavor wheel) |
-| Open PRs | #44 (fix/batch-upload-ux — CI was green, new commits need re-run) |
+| Server test files | 13 |
+| Server tests passing | 183 / 183 |
+| E2E test files | 10 |
+| Schema validation | 33 / 33 operations pass |
+| Flavor descriptors | 121 (SCA 2016 + 20 specialty additions) |
+| Open PRs | #88 (chore/expand-flavor-seed) |
+
+## Recent architecture passes — three audits shipped (PRs #81–#87)
+
+Third `/improve-codebase-architecture` audit run 2026-05-15, all six
+candidates merged:
+
+| PR | Refactor |
+|---|---|
+| #81 | `useSortableList` — search+sort seam, 2 callers |
+| #82 | `UploadModal` callbacks — 4 props → 3 with discriminated `onComplete` |
+| #83 | `useFlavorParser` — supplier-notes parse widget, 2 callers |
+| #84 | `requireUserBeanByBeanId` — server guard helper, 3 callers + closed NOT_FOUND coverage gap |
+| #85 | Deleted zombie `MetricsTable` (0 production callers) |
+| #86 | `useFlavorDescriptors` — flavor catalogue seam, 5 callers + killed BeanCard's parallel query |
+| #87 | `ROAST_PREVIEW_FIELDS` fragment + deleted dead `PREVIEW_ROAST_LOG` |
+
+Domain glossary at `docs/CONTEXT.md` now defines: Roast preview,
+Flavor descriptor catalogue, Flavor parse widget, Sortable list.
 
 ## Wave Completion
 
@@ -160,9 +177,8 @@ schema mismatches fail at test time.
 
 ## Known Issues
 
-- Dark mode tokens not yet defined (theme toggle sets `data-theme="dark"` but no CSS responds)
 - E2E tests mutate data — reseed (`npm run db:seed`) before each full E2E run
-- 1 E2E flake: "other roasts of this bean" depends on seed data not being deleted by earlier tests
+- (Dark mode tokens shipped in PR #74; "other roasts" flake fixed in PR #73)
 
 ## Completed Post-Merge
 
