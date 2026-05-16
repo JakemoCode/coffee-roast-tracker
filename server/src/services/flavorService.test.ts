@@ -142,6 +142,10 @@ describe("FlavorService.parseSupplierNotes", () => {
     expect(names).toContain("Peach");
     expect(names).toContain("Pineapple");
     expect(names).toContain("Chocolate");
+    // Tropical extensions beyond the SCA 2016 wheel — Sweet Maria's
+    // notes routinely cite these, so the seed now includes them.
+    expect(names).toContain("Mango");
+    expect(names).toContain("Papaya");
 
     // Cocoa is a PARENT (has Chocolate + Dark chocolate children) — filtered.
     expect(names).not.toContain("Cocoa");
@@ -165,12 +169,8 @@ describe("FlavorService.parseSupplierNotes", () => {
     expect(names).not.toContain("Herb-like");
     expect(names).not.toContain("Sour aromatics");
 
-    // Mango and Papaya are NOT in the SCA 2016 wheel
-    expect(names).not.toContain("Mango");
-    expect(names).not.toContain("Papaya");
-
-    // The total should be compact (roughly 5-10 matches, definitely not 32).
-    expect(results.length).toBeLessThanOrEqual(10);
+    // The total should be compact — a handful of matches, not dozens.
+    expect(results.length).toBeLessThanOrEqual(12);
     expect(results.length).toBeGreaterThanOrEqual(4);
   });
 
