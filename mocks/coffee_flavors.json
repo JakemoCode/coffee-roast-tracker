@@ -37,6 +37,11 @@
               "name": "Strawberry",
               "colour": "#EF2D36",
               "definition": "The somewhat sweet, slightly sour, floral, fruity, frequently winey aromatic associated with strawberry."
+            },
+            {
+              "name": "Cranberry",
+              "colour": "#A8243F",
+              "definition": "A tart, slightly sweet, dry, fruity aromatic with astringent qualities, associated with fresh or dried cranberries."
             }
           ]
         },
@@ -101,6 +106,46 @@
               "name": "Pear",
               "colour": "#BAA635",
               "definition": "The sweet, slightly floral, musty, woody, fruity aromatic associated with pears."
+            },
+            {
+              "name": "Apricot",
+              "colour": "#F2A972",
+              "definition": "A sweet, floral, slightly tart, stone-fruit aromatic with soft honeyed undertones."
+            },
+            {
+              "name": "Plum",
+              "colour": "#7A2D52",
+              "definition": "A sweet, slightly tart, deep, fruity aromatic with floral and winey undertones characteristic of fresh plums."
+            },
+            {
+              "name": "Fig",
+              "colour": "#5C3A4E",
+              "definition": "A sweet, jammy, slightly seedy, dried-fruit aromatic with floral and earthy undertones."
+            },
+            {
+              "name": "Mango",
+              "colour": "#F4B544",
+              "definition": "A sweet, juicy, lightly tart, tropical aromatic with floral and resinous undertones."
+            },
+            {
+              "name": "Passionfruit",
+              "colour": "#D4D02C",
+              "definition": "A bright, tart, tropical, sweet aromatic with floral, slightly fermented undertones."
+            },
+            {
+              "name": "Guava",
+              "colour": "#E58A6E",
+              "definition": "A sweet, musky, tropical aromatic with floral and slightly grassy undertones."
+            },
+            {
+              "name": "Lychee",
+              "colour": "#F5C6D0",
+              "definition": "A delicate, sweet, floral, lightly perfumed tropical aromatic with subtle rose and grape notes."
+            },
+            {
+              "name": "Papaya",
+              "colour": "#F18A4A",
+              "definition": "A sweet, soft, slightly musky tropical aromatic with melon-like undertones."
             }
           ]
         },
@@ -128,6 +173,21 @@
               "name": "Lime",
               "colour": "#7EB138",
               "definition": "The citric, sour, astringent, bitter, green, peely, sharp and somewhat floral aromatic associated with limes."
+            },
+            {
+              "name": "Bergamot",
+              "colour": "#F2C24A",
+              "definition": "A sweet, floral, perfumed citrus aromatic with mild bitterness and tea-like qualities; the defining note of Earl Grey."
+            },
+            {
+              "name": "Tangerine",
+              "colour": "#F19A3E",
+              "definition": "A sweet, juicy, lightly tart citrus aromatic with floral top notes; brighter and less peely than orange."
+            },
+            {
+              "name": "Mandarin",
+              "colour": "#E07A2C",
+              "definition": "A sweet, soft, slightly honeyed citrus aromatic with low acidity and floral undertones."
             }
           ]
         }
@@ -465,6 +525,16 @@
               "name": "Clove",
               "colour": "#A16C5A",
               "definition": "A sweet, brown, spicy, pungent, floral, citrus, medicinal, and slightly minty aromatic."
+            },
+            {
+              "name": "Cardamom",
+              "colour": "#9CAB7E",
+              "definition": "A sweet, warm, slightly pungent, complex spice aromatic with eucalyptus, citrus, and floral undertones."
+            },
+            {
+              "name": "Ginger",
+              "colour": "#C99450",
+              "definition": "A warm, sweet, pungent, slightly woody and citrusy spice aromatic with peppery heat."
             }
           ]
         }
@@ -493,6 +563,16 @@
               "name": "Almond",
               "colour": "#C89F83",
               "definition": "A sweet, light brown, woody, and buttery aromatic with floral and fruity notes that may include rose, cherry, and apricot. It is also astringent and may be slightly smoky."
+            },
+            {
+              "name": "Walnut",
+              "colour": "#8C5A3A",
+              "definition": "A rich, slightly bitter, oily, brown, woody aromatic with tannic and slightly astringent qualities."
+            },
+            {
+              "name": "Pecan",
+              "colour": "#A0623E",
+              "definition": "A sweet, buttery, lightly toasted, brown, oily aromatic with woody and caramelized undertones."
             }
           ]
         },
@@ -598,6 +678,26 @@
               "name": "Jasmine",
               "colour": "#F7F1BD",
               "definition": "An intense, slightly pungent, sweet, floral aromatic with underlying green, musty/dusty notes."
+            },
+            {
+              "name": "Hibiscus",
+              "colour": "#D63A6C",
+              "definition": "A tart, fruity, deeply floral aromatic with cranberry-like astringency and dark-red-fruit undertones."
+            },
+            {
+              "name": "Elderflower",
+              "colour": "#F5E8B0",
+              "definition": "A delicate, sweet, lightly musky, perfumed floral aromatic with pear and lychee-like undertones."
+            },
+            {
+              "name": "Lavender",
+              "colour": "#9E84BF",
+              "definition": "A sweet, soft, herbaceous, perfumed floral aromatic with slightly camphorous and resinous notes."
+            },
+            {
+              "name": "Honeysuckle",
+              "colour": "#F8E480",
+              "definition": "A sweet, light, nectar-like, perfumed floral aromatic with subtle citrus and pear undertones."
             }
           ]
         }
