@@ -12,7 +12,7 @@ Web app for tracking, analyzing, and sharing home coffee roasts. Users import Ka
 - **Database:** PostgreSQL
 - **Auth:** Clerk (JWT validation in Apollo context)
 - **File storage:** Cloudflare R2 (S3-compatible)
-- **Deploy:** Vercel (frontend + API as serverless functions) + Neon (Postgres)
+- **Deploy:** Vercel (frontend + API as serverless functions) + Neon (Postgres). If Vercel cold starts hurt, the fallback is Fly.io, not Heroku
 
 ## Monorepo Layout
 
@@ -48,7 +48,7 @@ npm run build            # Production build
 
 - All authenticated queries/mutations are userId-scoped — never return data across users
 - Clerk JWT is validated in Apollo context middleware; userId is resolved per request
-- Sharing uses UUID shareTokens — public queries validate `isShared: true` before returning
+- Reads are public and writes need auth. Roasts have `isPublic` (default true) and users can set `privateByDefault`. There is no shareToken. `.kpro` downloads are public on public roasts
 - R2 presigned URLs are generated server-side for profile downloads
 - All temperatures stored in Celsius (Kaffelogic native); Fahrenheit is UI-only via user `tempUnit` preference
 - DTR% is derived client-side (`developmentTime / totalDuration`), not stored
@@ -71,6 +71,7 @@ npm run test:coverage # With coverage report
 - Jest `globalSetup` runs `prisma migrate reset --force` before the suite
 - Uses `--experimental-vm-modules` for ESM support
 - Test files: `src/**/*.test.ts`
+- Every computed `Type.field` resolver (not a direct Prisma column) must be merged in `resolvers/index.ts` and selected in an `executeOperation` test. `src/resolvers/coverage.test.ts` fails the build if a field has no such test
 
 **Client (Vitest + React Testing Library + MSW)**
 
@@ -84,6 +85,9 @@ npm run test:coverage # With coverage report
 - MSW mocks GraphQL responses — add handlers in `client/test/mocks/handlers.ts`
 - jsdom environment for DOM rendering
 - Test files: `src/**/*.test.{ts,tsx}`
+- Test page and component flows with MSW and real Apollo (see the `*-flow.integration.test.tsx` files). Do not mock `useQuery`, `useMutation` or `useFragment`
+- Assert by role, label or text, not by row counts or CSS classes
+- In E2E, write two tests instead of `if (await x.isVisible())`, and select by role, not `data-*` attributes
 
 **Both (from root)**
 
@@ -97,6 +101,16 @@ npm test              # Runs server then client tests sequentially
 - Prisma schema is the source of truth for data models
 - GraphQL schema mirrors Prisma models
 - Server imports use `.js` extensions in relative paths (Node ESM resolution); client (Vite) does not require extensions
+- Name GraphQL queries descriptively and searchably (`userSettings`, `roastsByBean`), never `me` or `self`
+- Type component data props as `FragmentOf<typeof XFragment>` and read them with `useFragment`. Parent queries spread the fragment. Never redeclare the data shape as a standalone TS interface
+- A fragment used by a query in `client/src/graphql/operations.ts` must live in a neutral file that does not import `operations.ts` (see `components/modals/UploadModal/RoastPreviewFragment.ts`). Otherwise `graphql()` throws at module load on the import cycle, and `validate:schema` only scans component files
+
+## Design direction
+
+- Follow the "Specialty Craft" direction: linen background, dark espresso header, Sora headings, and flavor accent dots (berry, caramel, herb) next to tasting notes
+- Keep tables spacious: generous row height, clear type hierarchy, clickable rows that open the detail view, multi-select for comparison
+- The audience is hobbyist Kaffelogic roasters who are comfortable with tech but are not developers
+- Use tokens from `client/src/styles/tokens.css`. Light and dark themes both exist (`dark.css`)
 
 ## Git Workflow
 
@@ -120,10 +134,10 @@ For every task:
 4. Write or update unit tests
 5. **Write or update integration tests** for any form/modal flow — render the parent, exercise the child's features through it, verify data round-trips
 6. **Write or update E2E user flow tests** (`e2e/` directory) — every feature must have Playwright tests covering the full user interaction, not just visibility checks
-7. Run all test suites (unit + integration + E2E)
+7. Run all test suites (unit + integration + E2E). After wiring changes, click through the flow by hand too, because green suites have passed while forms were broken
 8. Fix any failures
 9. Confirm all tests pass
-10. Before committing: fire off `code-reviewer` and `code-simplifier` subagents in parallel to review the diff for quality, cleanliness, and precision — apply any fixes before committing
+10. Before committing: run `/code-review high --fix` on the diff and apply any remaining fixes
 11. Commit, push, and open a PR
 12. Run `/review-requirements` to check overall build status
 
